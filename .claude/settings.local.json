@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/nyuk8/PycharmProjects/alpha-desk/**)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk status)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server status)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server init && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server remote add origin https://github.com/nyuk/alpha-desk-ai-server.git && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server remote -v)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server fetch origin 2>&1 | head -20)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server branch -r)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server ls-tree --name-only origin/main)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server checkout -b main --track origin/main 2>&1)",
+      "Bash(git checkout:*)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server add .gitignore && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server commit -m \"$\\(cat <<'EOF'\nInitial project setup with FastAPI base structure\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push origin main 2>&1)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push --force origin main 2>&1)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server add -f .claude/ && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server commit -m \"Add .claude directory\" && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push origin main 2>&1)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server add README.md && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server commit -m \"Update README title to alphadesk-backend\" && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push origin main 2>&1)",
+      "Bash(gh pr:*)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server remote add upstream https://github.com/EDDI-RobotAcademy/alpha-desk-ai-server.git && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server fetch upstream 2>&1)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server log --oneline upstream/main)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server log --oneline)",
+      "Bash(git stash:*)",
+      "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server add . && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server commit -m \"Initial project setup with FastAPI base structure\" && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push origin pr-to-upstream 2>&1)"
+    ]
+  }
+}
