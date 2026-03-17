@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.domains.news_search.adapter.inbound.api.news_search_router import router as news_search_router
+from app.domains.stock_analyzer.adapter.inbound.api.analyzer_router import router as analyzer_router
 from app.domains.stock_normalizer.adapter.inbound.api.normalizer_router import router as normalizer_router
 from app.domains.stock_collector.adapter.inbound.api.collector_router import router as collector_router
 from app.domains.stock_collector.infrastructure.orm.raw_article_orm import RawArticleORM  # noqa: F401
@@ -25,6 +26,7 @@ app.include_router(saved_article_router)
 app.include_router(watchlist_router)
 app.include_router(collector_router)
 app.include_router(normalizer_router)
+app.include_router(analyzer_router)
 
 
 @app.get("/")

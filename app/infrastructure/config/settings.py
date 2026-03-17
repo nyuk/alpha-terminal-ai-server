@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     mysql_database: str
     serp_api_key: str = ""
     dart_api_key: str = ""
+    openai_api_key: str = ""
     debug: bool = False
 
     model_config = {
