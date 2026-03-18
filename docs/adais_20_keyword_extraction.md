@@ -48,8 +48,21 @@ GET /analyzer/articles/{id}/keywords
 
 ---
 
+## 구현 완료
+
+| 레이어 | 파일 |
+|--------|------|
+| Application Port | `application/usecase/keyword_extraction_port.py` |
+| Application UseCase | `application/usecase/extract_keywords_usecase.py` |
+| Application Response | `application/response/keyword_extraction_response.py` |
+| Outbound Adapter | `adapter/outbound/external/openai_keyword_adapter.py` |
+| Inbound Adapter | `adapter/inbound/api/analyzer_router.py` (GET /analyzer/articles/{id}/keywords 추가) |
+
+공유 저장소: `stock_normalizer/adapter/outbound/persistence/repository_registry.py` 싱글톤 사용
+
 ## 변경 이력
 
 | 날짜 | 작성자 | 내용 |
 |------|--------|------|
 | 2026-03-17 | 이승욱 | 최초 작성 |
+| 2026-03-18 | 이승욱 | 구현 완료 |

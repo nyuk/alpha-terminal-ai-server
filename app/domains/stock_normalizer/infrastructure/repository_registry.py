@@ -1,0 +1,4 @@
+from app.domains.stock_normalizer.adapter.outbound.persistence.normalized_article_repository_impl import InMemoryNormalizedArticleRepository
+
+# normalizer와 analyzer가 공유하는 싱글톤 저장소
+normalized_article_repository = InMemoryNormalizedArticleRepository()

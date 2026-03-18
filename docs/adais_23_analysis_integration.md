@@ -71,8 +71,20 @@ ADAIS-16에서 정의한 `ArticleAnalysisResponse` 스키마를 따른다.
 
 ---
 
+## 구현 완료
+
+| 레이어 | 파일 |
+|--------|------|
+| Application Port | `application/usecase/article_analysis_repository_port.py` |
+| Application UseCase | `application/usecase/get_or_create_analysis_usecase.py` |
+| Outbound Persistence | `adapter/outbound/persistence/article_analysis_repository_impl.py` (인메모리) |
+| Inbound Adapter | `adapter/inbound/api/analyzer_router.py` (GET /analyzer/articles/{id}/analysis 추가) |
+
+※ ORM은 ADAIS-23 추후 확장 시 `infrastructure/orm/article_analysis_orm.py` + mapper로 분리 예정
+
 ## 변경 이력
 
 | 날짜 | 작성자 | 내용 |
 |------|--------|------|
 | 2026-03-17 | 이승욱 | 최초 작성 |
+| 2026-03-18 | 이승욱 | 구현 완료 (인메모리 저장, 중복 분석 방지) |

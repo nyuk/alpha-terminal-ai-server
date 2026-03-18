@@ -54,8 +54,19 @@ GET /analyzer/articles/{id}/risk-tags
 
 ---
 
+## 구현 완료
+
+| 레이어 | 파일 |
+|--------|------|
+| Application Port | `application/usecase/risk_tagging_port.py` |
+| Application UseCase | `application/usecase/generate_risk_tags_usecase.py` |
+| Application Response | `application/response/risk_tagging_response.py` |
+| Outbound Adapter | `adapter/outbound/external/openai_risk_tag_adapter.py` |
+| Inbound Adapter | `adapter/inbound/api/analyzer_router.py` (GET /analyzer/articles/{id}/risk-tags 추가) |
+
 ## 변경 이력
 
 | 날짜 | 작성자 | 내용 |
 |------|--------|------|
 | 2026-03-17 | 이승욱 | 최초 작성 |
+| 2026-03-18 | 이승욱 | 구현 완료 |
