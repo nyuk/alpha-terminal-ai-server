@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.domains.stock_normalizer.adapter.outbound.persistence.normalized_disclosure_repository_impl import InMemoryNormalizedDisclosureRepository
-from app.domains.stock_normalizer.adapter.outbound.persistence.repository_registry import normalized_article_repository
+from app.domains.stock_normalizer.infrastructure.repository_registry import normalized_article_repository
 from app.domains.stock_normalizer.application.request.normalize_disclosure_request import NormalizeDisclosureRequest
 from app.domains.stock_normalizer.application.request.normalize_raw_article_request import NormalizeRawArticleRequest
 from app.domains.stock_normalizer.application.response.normalize_disclosure_response import NormalizeDisclosureResponse
