@@ -122,3 +122,19 @@ async def run_pipeline(db: Session = Depends(get_db)):
 @router.get("/summaries", response_model=List[StockSummary])
 async def get_summaries():
     return list(_summary_registry.values())
+
+
+async def run_pipeline_job():
+    """스케줄러에서 호출되는 파이프라인 자동 실행 함수"""
+    import logging
+    from app.infrastructure.database.session import SessionLocal
+    logger = logging.getLogger(__name__)
+    logger.info("[Scheduler] 매일 07:00 파이프라인 자동 실행 시작")
+    db = SessionLocal()
+    try:
+        result = await run_pipeline(db=db)
+        logger.info(f"[Scheduler] 파이프라인 완료: {result}")
+    except Exception as e:
+        logger.error(f"[Scheduler] 파이프라인 실행 실패: {e}")
+    finally:
+        db.close()

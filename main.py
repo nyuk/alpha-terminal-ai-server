@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,12 +20,22 @@ from app.domains.watchlist.adapter.inbound.api.watchlist_router import router as
 from app.domains.watchlist.infrastructure.orm.watchlist_item_orm import WatchlistItemORM  # noqa: F401
 from app.infrastructure.config.settings import Settings, get_settings
 from app.infrastructure.database.session import Base, engine
+from app.infrastructure.scheduler.pipeline_scheduler import start_scheduler, stop_scheduler
 
 settings: Settings = get_settings()
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(debug=settings.debug)
+
+@asynccontextmanager
+async def lifespan(fastapi_app: FastAPI):
+    from app.domains.pipeline.adapter.inbound.api.pipeline_router import run_pipeline_job
+    start_scheduler(run_pipeline_job)
+    yield
+    stop_scheduler()
+
+
+app = FastAPI(debug=settings.debug, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
