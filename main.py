@@ -1,10 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.domains.account.infrastructure.orm.account_orm import AccountORM  # noqa: F401
 from app.domains.auth.adapter.inbound.api.auth_router import router as auth_router
 from app.domains.kakao_auth.adapter.inbound.api.kakao_authentication_router import router as kakao_authentication_router
 from app.domains.news_search.adapter.inbound.api.news_search_router import router as news_search_router
 from app.domains.news_search.adapter.inbound.api.saved_article_router import router as saved_article_router
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
+from app.domains.pipeline.adapter.inbound.api.pipeline_router import router as pipeline_router
 from app.domains.post.adapter.inbound.api.post_router import router as post_router
 from app.domains.post.infrastructure.orm.post_orm import PostORM  # noqa: F401
 from app.domains.stock_analyzer.adapter.inbound.api.analyzer_router import router as analyzer_router
@@ -22,6 +25,14 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(debug=settings.debug)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)
 app.include_router(kakao_authentication_router)
 app.include_router(post_router)
@@ -31,6 +42,7 @@ app.include_router(watchlist_router)
 app.include_router(collector_router)
 app.include_router(normalizer_router)
 app.include_router(analyzer_router)
+app.include_router(pipeline_router)
 
 
 @app.get("/")

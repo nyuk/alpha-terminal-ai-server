@@ -1,0 +1,20 @@
+from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from app.domains.account.application.usecase.account_repository_port import AccountRepositoryPort
+from app.domains.account.domain.entity.account import Account
+from app.domains.account.infrastructure.mapper.account_mapper import AccountMapper
+from app.domains.account.infrastructure.orm.account_orm import AccountORM
+
+
+class AccountRepositoryImpl(AccountRepositoryPort):
+
+    def __init__(self, db: Session):
+        self._db = db
+
+    def find_by_email(self, email: str) -> Optional[Account]:
+        orm = self._db.query(AccountORM).filter(AccountORM.email == email).first()
+        if orm is None:
+            return None
+        return AccountMapper.to_entity(orm)
