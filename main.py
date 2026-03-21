@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.domains.account.adapter.inbound.api.account_router import router as account_router
 from app.domains.account.infrastructure.orm.account_orm import AccountORM  # noqa: F401
 from app.domains.auth.adapter.inbound.api.auth_router import router as auth_router
 from app.domains.kakao_auth.adapter.inbound.api.kakao_authentication_router import router as kakao_authentication_router
@@ -39,12 +40,13 @@ app = FastAPI(debug=settings.debug, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[settings.cors_allowed_frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(account_router)
 app.include_router(auth_router)
 app.include_router(kakao_authentication_router)
 app.include_router(post_router)

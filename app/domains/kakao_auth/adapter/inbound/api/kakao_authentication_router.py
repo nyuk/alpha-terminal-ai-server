@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.domains.account.adapter.outbound.persistence.account_repository_impl import AccountRepositoryImpl
@@ -61,17 +61,12 @@ async def request_access_token_after_redirection(
         )
         result = usecase.execute(code)
 
-        body = result.model_dump(exclude={"temp_token"})
-        response = JSONResponse(content=body)
+        response = RedirectResponse(url=_settings.cors_allowed_frontend_url)
 
         if result.temp_token_issued and result.temp_token:
-            response.set_cookie(
-                key="temp_token",
-                value=result.temp_token,
-                httponly=True,
-                max_age=300,
-                samesite="lax",
-            )
+            response.set_cookie(key="temp_token", value=result.temp_token, httponly=True, max_age=300, samesite="lax")
+            response.set_cookie(key="kakao_nickname", value=result.nickname, max_age=300, samesite="lax")
+            response.set_cookie(key="kakao_email", value=result.email, max_age=300, samesite="lax")
 
         return response
 

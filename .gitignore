@@ -409,7 +409,5 @@ pyrightconfig.json
 # exclude .DS_Store
 .DS_Store
 
-# Claude Code personal skills (not shared with team)
-.claude/commands/commit.md
-.claude/commands/pr.md
-.claude/commands/review-apply.md
+# Claude Code personal tools (not shared with team)
+.claude/

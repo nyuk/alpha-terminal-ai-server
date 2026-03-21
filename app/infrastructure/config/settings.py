@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     serp_api_key: str = ""
     dart_api_key: str = ""
     openai_api_key: str = ""
+    cors_allowed_frontend_url: str = "http://localhost:3000"
     debug: bool = False
 
     model_config = {

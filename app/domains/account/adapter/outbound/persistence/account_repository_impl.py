@@ -18,3 +18,10 @@ class AccountRepositoryImpl(AccountRepositoryPort):
         if orm is None:
             return None
         return AccountMapper.to_entity(orm)
+
+    def save(self, account: Account) -> Account:
+        orm = AccountMapper.to_orm(account)
+        self._db.add(orm)
+        self._db.commit()
+        self._db.refresh(orm)
+        return AccountMapper.to_entity(orm)
