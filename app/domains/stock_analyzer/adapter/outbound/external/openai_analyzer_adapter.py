@@ -3,6 +3,7 @@ import json
 from openai import OpenAI
 
 from app.domains.stock_analyzer.application.usecase.article_analyzer_port import ArticleAnalyzerPort
+from app.infrastructure.config.settings import get_settings
 from app.domains.stock_analyzer.domain.entity.analyzed_article import AnalyzedArticle
 from app.domains.stock_analyzer.domain.entity.tag_item import TagCategory, TagItem
 
@@ -46,7 +47,7 @@ class OpenAIAnalyzerAdapter(ArticleAnalyzerPort):
         )
 
         response = self._client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=get_settings().openai_model,
             messages=[{"role": "user", "content": prompt}],
         )
 

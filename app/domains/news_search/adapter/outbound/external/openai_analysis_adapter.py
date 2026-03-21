@@ -4,6 +4,7 @@ from openai import OpenAI
 
 from app.domains.news_search.application.usecase.article_analysis_port import ArticleAnalysisPort
 from app.domains.news_search.domain.entity.article_analysis import ArticleAnalysis
+from app.infrastructure.config.settings import get_settings
 
 PROMPT_TEMPLATE = """다음 기사 본문을 분석하여 아래 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요.
 
@@ -28,7 +29,7 @@ class OpenAIAnalysisAdapter(ArticleAnalysisPort):
 
     async def analyze(self, article_id: int, content: str) -> ArticleAnalysis:
         response = self._client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=get_settings().openai_model,
             messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(content=content[:3000])}],
         )
 

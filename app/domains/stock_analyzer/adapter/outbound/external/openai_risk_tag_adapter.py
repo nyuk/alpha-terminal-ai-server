@@ -5,6 +5,7 @@ from openai import OpenAI
 
 from app.domains.stock_analyzer.application.usecase.risk_tagging_port import RiskTaggingPort
 from app.domains.stock_analyzer.domain.entity.tag_item import TagCategory, TagItem
+from app.infrastructure.config.settings import get_settings
 
 PROMPT_TEMPLATE = """다음 기사를 분석하여 아래 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요.
 
@@ -32,12 +33,12 @@ class OpenAIRiskTagAdapter(RiskTaggingPort):
     async def tag(self, title: str, body: str) -> List[TagItem]:
         prompt = PROMPT_TEMPLATE.format(title=title, body=body[:3000])
 
-        response = self._client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
+        response = self._client.chat.completions.create(
+            model=get_settings().openai_model,
+            messages=[{"role": "user", "content": prompt}],
         )
 
-        data = json.loads(response.output_text.strip())
+        data = json.loads(response.choices[0].message.content.strip())
         return [
             TagItem(label=t.get("label", ""), category=TagCategory.RISK)
             for t in data.get("risk_tags", [])

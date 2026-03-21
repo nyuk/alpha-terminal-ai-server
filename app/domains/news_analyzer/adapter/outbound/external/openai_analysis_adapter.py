@@ -5,8 +5,9 @@ from openai import OpenAI
 from app.domains.news_analyzer.application.usecase.article_analysis_port import ArticleAnalysisPort
 from app.domains.news_analyzer.domain.entity.analysis_result import AnalysisResult
 from app.domains.news_analyzer.domain.value_object.sentiment import Sentiment
+from app.infrastructure.config.settings import get_settings
 
-ANALYSIS_INSTRUCTIONS = """당신은 뉴스 기사 분석 전문가입니다.
+SYSTEM_PROMPT = """당신은 뉴스 기사 분석 전문가입니다.
 사용자가 제공하는 기사 본문을 분석하여 핵심 키워드와 감정 분석 결과를 반환하세요.
 
 규칙:
@@ -27,14 +28,16 @@ class OpenAIAnalysisAdapter(ArticleAnalysisPort):
         self._client = OpenAI(api_key=api_key)
 
     def analyze(self, content: str) -> AnalysisResult:
-        response = self._client.responses.create(
-            model="gpt-5-mini",
-            instructions=ANALYSIS_INSTRUCTIONS,
-            input=INPUT_TEMPLATE.format(content=content),
-            text={"format": {"type": "json_object"}},
+        response = self._client.chat.completions.create(
+            model=get_settings().openai_model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": INPUT_TEMPLATE.format(content=content[:3000])},
+            ],
+            response_format={"type": "json_object"},
         )
 
-        data = json.loads(response.output_text)
+        data = json.loads(response.choices[0].message.content)
 
         sentiment = Sentiment(data["sentiment"])
         score = max(-1.0, min(1.0, float(data["sentiment_score"])))

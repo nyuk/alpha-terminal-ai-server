@@ -4,6 +4,7 @@ from typing import Tuple
 from openai import OpenAI
 
 from app.domains.stock_analyzer.application.usecase.sentiment_analysis_port import SentimentAnalysisPort
+from app.infrastructure.config.settings import get_settings
 
 PROMPT_TEMPLATE = """다음 기사를 분석하여 아래 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요.
 
@@ -29,10 +30,10 @@ class OpenAISentimentAdapter(SentimentAnalysisPort):
     async def analyze(self, title: str, body: str) -> Tuple[str, float]:
         prompt = PROMPT_TEMPLATE.format(title=title, body=body[:3000])
 
-        response = self._client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
+        response = self._client.chat.completions.create(
+            model=get_settings().openai_model,
+            messages=[{"role": "user", "content": prompt}],
         )
 
-        data = json.loads(response.output_text.strip())
+        data = json.loads(response.choices[0].message.content.strip())
         return data.get("sentiment", "NEUTRAL"), float(data.get("sentiment_score", 0.0))
