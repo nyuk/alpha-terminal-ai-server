@@ -6,17 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.domains.account.adapter.inbound.api.account_router import router as account_router
 from app.domains.account.infrastructure.orm.account_orm import AccountORM  # noqa: F401
 from app.domains.auth.adapter.inbound.api.auth_router import router as auth_router
+from app.domains.auth.adapter.inbound.api.authentication_router import router as authentication_router
 from app.domains.kakao_auth.adapter.inbound.api.kakao_authentication_router import router as kakao_authentication_router
 from app.domains.news_search.adapter.inbound.api.news_search_router import router as news_search_router
-from app.domains.stock_analyzer.adapter.inbound.api.analyzer_router import router as analyzer_router
-from app.domains.stock_normalizer.adapter.inbound.api.normalizer_router import router as normalizer_router
-from app.domains.stock_collector.adapter.inbound.api.collector_router import router as collector_router
-from app.domains.stock_collector.infrastructure.orm.raw_article_orm import RawArticleORM  # noqa: F401
 from app.domains.news_search.adapter.inbound.api.saved_article_router import router as saved_article_router
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
 from app.domains.pipeline.adapter.inbound.api.pipeline_router import router as pipeline_router
 from app.domains.post.adapter.inbound.api.post_router import router as post_router
 from app.domains.post.infrastructure.orm.post_orm import PostORM  # noqa: F401
+from app.domains.stock.adapter.inbound.api.stock_router import router as stock_router
+from app.domains.stock.infrastructure.orm.stock_orm import StockORM  # noqa: F401
+from app.domains.stock_analyzer.adapter.inbound.api.analyzer_router import router as analyzer_router
+from app.domains.stock_collector.adapter.inbound.api.collector_router import router as collector_router
+from app.domains.stock_collector.infrastructure.orm.raw_article_orm import RawArticleORM  # noqa: F401
+from app.domains.stock_normalizer.adapter.inbound.api.normalizer_router import router as normalizer_router
 from app.domains.watchlist.adapter.inbound.api.watchlist_router import router as watchlist_router
 from app.domains.watchlist.infrastructure.orm.watchlist_item_orm import WatchlistItemORM  # noqa: F401
 from app.infrastructure.config.settings import Settings, get_settings
@@ -48,7 +51,7 @@ app.add_middleware(
 
 app.include_router(account_router)
 app.include_router(auth_router)
-app.include_router(account_router)
+app.include_router(authentication_router)
 app.include_router(kakao_authentication_router)
 app.include_router(post_router)
 app.include_router(news_search_router)
@@ -56,6 +59,7 @@ app.include_router(saved_article_router)
 app.include_router(watchlist_router)
 app.include_router(collector_router)
 app.include_router(normalizer_router)
+app.include_router(stock_router)
 app.include_router(analyzer_router)
 app.include_router(pipeline_router)
 

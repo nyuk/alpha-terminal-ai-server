@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.domains.account.adapter.outbound.in_memory.redis_account_session_adapter import RedisAccountSessionAdapter
+from app.domains.account.adapter.outbound.in_memory.redis_kakao_token_adapter import RedisKakaoTokenAdapter
 from app.domains.account.adapter.outbound.persistence.account_repository_impl import AccountRepositoryImpl
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
 from app.domains.kakao_auth.adapter.outbound.external.kakao_oauth_adapter import KakaoOAuthAdapter
@@ -35,7 +36,8 @@ _kakao_token_adapter = KakaoTokenAdapter(
 _session_store = RedisSessionAdapter(redis_client)
 _kakao_login_usecase = KakaoLoginUseCase(_kakao_token_adapter, _session_store)
 _temp_token_store = RedisTempTokenAdapter(redis_client)
-_account_session_adapter = RedisAccountSessionAdapter(redis_client)
+_kakao_session_store = RedisAccountSessionAdapter(redis_client)
+_kakao_token_link = RedisKakaoTokenAdapter(redis_client)
 
 
 @router.get("/request-oauth-link")
@@ -61,42 +63,23 @@ async def request_access_token_after_redirection(
             user_info_port=_kakao_token_adapter,
             account_repository=AccountRepositoryImpl(db),
             temp_token_store=_temp_token_store,
+            session_store=_kakao_session_store,
+            kakao_token_link=_kakao_token_link,
         )
         result = usecase.execute(code)
 
-        # 기존 회원: 세션 발급 → Cookie → Redirect
-        if result.is_registered and result.account_id and result.kakao_access_token:
-            user_token = _account_session_adapter.create(result.account_id)
-            _account_session_adapter.save_account_kakao_token(result.account_id, result.kakao_access_token)
+        response = RedirectResponse(url=_settings.frontend_auth_callback_url)
 
-            response = RedirectResponse(url=_settings.cors_allowed_frontend_url, status_code=302)
-            response.set_cookie(
-                key="user_token",
-                value=user_token,
-                httponly=True,
-                max_age=3600,
-                samesite="lax",
-            )
-            response.set_cookie(key="nickname", value=result.nickname, max_age=3600, samesite="lax")
-            response.set_cookie(key="email", value=result.email, max_age=3600, samesite="lax")
-            response.set_cookie(key="account_id", value=str(result.account_id), max_age=3600, samesite="lax")
-            return response
-
-        # 신규 회원: /auth-callback redirect + temp_token HttpOnly Cookie
-        callback_url = (
-            f"{_settings.cors_allowed_frontend_url}/auth-callback"
-            f"?nickname={quote(result.nickname)}&email={quote(result.email)}"
-        )
-        response = RedirectResponse(url=callback_url, status_code=302)
+        if result.is_registered and result.user_token:
+            response.set_cookie(key="user_token", value=result.user_token, httponly=True, max_age=3600 * 24 * 7, samesite="lax")
+            response.set_cookie(key="nickname", value=quote(result.nickname), max_age=3600 * 24 * 7, samesite="lax")
+            response.set_cookie(key="email", value=quote(result.email), max_age=3600 * 24 * 7, samesite="lax")
+            response.set_cookie(key="account_id", value=str(result.account_id), max_age=3600 * 24 * 7, samesite="lax")
 
         if result.temp_token_issued and result.temp_token:
-            response.set_cookie(
-                key="temp_token",
-                value=result.temp_token,
-                httponly=True,
-                max_age=300,
-                samesite="lax",
-            )
+            response.set_cookie(key="temp_token", value=result.temp_token, httponly=True, max_age=300, samesite="lax")
+            response.set_cookie(key="kakao_nickname", value=quote(result.nickname), max_age=300, samesite="lax")
+            response.set_cookie(key="kakao_email", value=quote(result.email), max_age=300, samesite="lax")
 
         return response
 
