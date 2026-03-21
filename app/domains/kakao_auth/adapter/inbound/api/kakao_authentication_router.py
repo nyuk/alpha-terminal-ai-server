@@ -1,14 +1,17 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.domains.account.adapter.outbound.in_memory.redis_account_session_adapter import RedisAccountSessionAdapter
 from app.domains.account.adapter.outbound.persistence.account_repository_impl import AccountRepositoryImpl
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
 from app.domains.kakao_auth.adapter.outbound.external.kakao_oauth_adapter import KakaoOAuthAdapter
 from app.domains.kakao_auth.adapter.outbound.external.kakao_token_adapter import KakaoTokenAdapter
 from app.domains.kakao_auth.adapter.outbound.in_memory.redis_temp_token_adapter import RedisTempTokenAdapter
 from app.domains.kakao_auth.application.response.kakao_login_response import KakaoLoginResponse
-from app.domains.kakao_auth.application.usecase.check_kakao_account_registration_usecase import CheckKakaoAccountRegistrationUseCase
+from app.domains.kakao_auth.application.usecase.check_kakao_user_registration_usecase import CheckKakaoUserRegistrationUseCase
 from app.domains.kakao_auth.application.usecase.generate_kakao_oauth_url_usecase import GenerateKakaoOAuthUrlUseCase
 from app.domains.kakao_auth.application.usecase.kakao_login_usecase import KakaoLoginUseCase
 from app.infrastructure.cache.redis_client import redis_client
@@ -32,6 +35,7 @@ _kakao_token_adapter = KakaoTokenAdapter(
 _session_store = RedisSessionAdapter(redis_client)
 _kakao_login_usecase = KakaoLoginUseCase(_kakao_token_adapter, _session_store)
 _temp_token_store = RedisTempTokenAdapter(redis_client)
+_account_session_adapter = RedisAccountSessionAdapter(redis_client)
 
 
 @router.get("/request-oauth-link")
@@ -52,26 +56,54 @@ async def request_access_token_after_redirection(
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code is missing")
     try:
-        account_repository = AccountRepositoryImpl(db)
-        usecase = CheckKakaoAccountRegistrationUseCase(
+        usecase = CheckKakaoUserRegistrationUseCase(
             token_port=_kakao_token_adapter,
             user_info_port=_kakao_token_adapter,
-            account_repository=account_repository,
+            account_repository=AccountRepositoryImpl(db),
             temp_token_store=_temp_token_store,
         )
         result = usecase.execute(code)
 
-        response = RedirectResponse(url=_settings.cors_allowed_frontend_url)
+        # 기존 회원: 세션 발급 → Cookie → Redirect
+        if result.is_registered and result.account_id and result.kakao_access_token:
+            user_token = _account_session_adapter.create(result.account_id)
+            _account_session_adapter.save_account_kakao_token(result.account_id, result.kakao_access_token)
+
+            response = RedirectResponse(url=_settings.cors_allowed_frontend_url, status_code=302)
+            response.set_cookie(
+                key="user_token",
+                value=user_token,
+                httponly=True,
+                max_age=3600,
+                samesite="lax",
+            )
+            response.set_cookie(key="nickname", value=result.nickname, max_age=3600, samesite="lax")
+            response.set_cookie(key="email", value=result.email, max_age=3600, samesite="lax")
+            response.set_cookie(key="account_id", value=str(result.account_id), max_age=3600, samesite="lax")
+            return response
+
+        # 신규 회원: /auth-callback redirect + temp_token HttpOnly Cookie
+        callback_url = (
+            f"{_settings.cors_allowed_frontend_url}/auth-callback"
+            f"?nickname={quote(result.nickname)}&email={quote(result.email)}"
+        )
+        response = RedirectResponse(url=callback_url, status_code=302)
 
         if result.temp_token_issued and result.temp_token:
-            response.set_cookie(key="temp_token", value=result.temp_token, httponly=True, max_age=300, samesite="lax")
-            response.set_cookie(key="kakao_nickname", value=result.nickname, max_age=300, samesite="lax")
-            response.set_cookie(key="kakao_email", value=result.email, max_age=300, samesite="lax")
+            response.set_cookie(
+                key="temp_token",
+                value=result.temp_token,
+                httponly=True,
+                max_age=300,
+                samesite="lax",
+            )
 
         return response
 
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Kakao request failed: {e}")
 
 
 @router.get("/redirection", response_model=KakaoLoginResponse)

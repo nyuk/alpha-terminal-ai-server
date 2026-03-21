@@ -45,12 +45,12 @@ class OpenAIAnalyzerAdapter(ArticleAnalyzerPort):
             body=body[:3000],
         )
 
-        response = self._client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
+        response = self._client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
         )
 
-        raw = response.output_text.strip()
+        raw = response.choices[0].message.content.strip()
         data = json.loads(raw)
 
         tags = [

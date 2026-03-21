@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.domains.watchlist.adapter.outbound.persistence.watchlist_repository_impl import WatchlistRepositoryImpl
@@ -18,7 +18,10 @@ router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 async def add_watchlist(request: AddWatchlistRequest, db: Session = Depends(get_db)):
     repository = WatchlistRepositoryImpl(db)
     usecase = AddWatchlistUseCase(repository)
-    return usecase.execute(request)
+    try:
+        return usecase.execute(request)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("", response_model=List[WatchlistItemResponse])
@@ -32,4 +35,7 @@ async def get_watchlist(db: Session = Depends(get_db)):
 async def remove_watchlist(item_id: int, db: Session = Depends(get_db)):
     repository = WatchlistRepositoryImpl(db)
     usecase = RemoveWatchlistUseCase(repository)
-    usecase.execute(item_id)
+    try:
+        usecase.execute(item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

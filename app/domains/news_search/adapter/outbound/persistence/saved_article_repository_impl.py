@@ -26,3 +26,9 @@ class SavedArticleRepositoryImpl(SavedArticleRepositoryPort):
         if orm is None:
             return None
         return SavedArticleMapper.to_entity(orm)
+
+    def find_by_id(self, article_id: int) -> Optional[SavedArticle]:
+        orm = self._db.query(SavedArticleORM).filter(SavedArticleORM.id == article_id).first()
+        if orm is None:
+            return None
+        return SavedArticleMapper.to_entity(orm)

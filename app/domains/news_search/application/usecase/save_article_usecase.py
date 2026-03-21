@@ -1,5 +1,3 @@
-from fastapi import HTTPException
-
 from app.domains.news_search.application.request.save_article_request import SaveArticleRequest
 from app.domains.news_search.application.response.save_article_response import SaveArticleResponse
 from app.domains.news_search.application.usecase.article_content_port import ArticleContentPort
@@ -19,7 +17,7 @@ class SaveArticleUseCase:
     def execute(self, request: SaveArticleRequest) -> SaveArticleResponse:
         existing = self._repository.find_by_link(request.link)
         if existing:
-            raise HTTPException(status_code=409, detail="이미 저장된 기사입니다.")
+            raise ValueError("이미 저장된 기사입니다.")
 
         content = self._content_fetcher.fetch_content(request.link)
 

@@ -12,3 +12,7 @@ class SavedArticleRepositoryPort(ABC):
     @abstractmethod
     def find_by_link(self, link: str) -> Optional[SavedArticle]:
         pass
+
+    @abstractmethod
+    def find_by_id(self, article_id: int) -> Optional[SavedArticle]:
+        pass

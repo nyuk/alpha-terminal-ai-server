@@ -1,8 +1,7 @@
-from fastapi import HTTPException
-
 from app.domains.news_analyzer.application.request.analyze_article_request import AnalyzeArticleRequest
 from app.domains.news_analyzer.application.response.analyze_article_response import AnalyzeArticleResponse
 from app.domains.news_analyzer.application.usecase.article_analysis_port import ArticleAnalysisPort
+from app.domains.news_analyzer.application.usecase.exceptions import ArticleNotFoundError, EmptyContentError
 from app.domains.news_analyzer.application.usecase.saved_article_query_port import SavedArticleQueryPort
 
 
@@ -18,10 +17,10 @@ class AnalyzeArticleUseCase:
     def execute(self, request: AnalyzeArticleRequest) -> AnalyzeArticleResponse:
         article = self._article_query.find_by_id(request.article_id)
         if article is None:
-            raise HTTPException(status_code=404, detail="기사를 찾을 수 없습니다.")
+            raise ArticleNotFoundError("기사를 찾을 수 없습니다.")
 
         if not article.content or not article.content.strip():
-            raise HTTPException(status_code=422, detail="기사 본문이 비어 있어 분석할 수 없습니다.")
+            raise EmptyContentError("기사 본문이 비어 있어 분석할 수 없습니다.")
 
         result = self._analyzer.analyze(article.content)
 

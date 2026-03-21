@@ -1,5 +1,3 @@
-from fastapi import HTTPException
-
 from app.domains.watchlist.application.request.add_watchlist_request import AddWatchlistRequest
 from app.domains.watchlist.application.response.watchlist_response import WatchlistItemResponse
 from app.domains.watchlist.application.usecase.watchlist_repository_port import WatchlistRepositoryPort
@@ -13,7 +11,7 @@ class AddWatchlistUseCase:
     def execute(self, request: AddWatchlistRequest) -> WatchlistItemResponse:
         existing = self._repository.find_by_symbol(request.symbol)
         if existing:
-            raise HTTPException(status_code=409, detail="이미 등록된 종목입니다.")
+            raise ValueError("이미 등록된 종목입니다.")
 
         item = WatchlistItem(
             symbol=request.symbol,
