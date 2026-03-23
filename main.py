@@ -12,6 +12,7 @@ from app.domains.news_search.adapter.inbound.api.news_search_router import route
 from app.domains.news_search.adapter.inbound.api.saved_article_router import router as saved_article_router
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
 from app.domains.pipeline.adapter.inbound.api.pipeline_router import router as pipeline_router
+from app.domains.pipeline.infrastructure.orm.analysis_log_orm import AnalysisLogORM  # noqa: F401
 from app.domains.post.adapter.inbound.api.post_router import router as post_router
 from app.domains.post.infrastructure.orm.post_orm import PostORM  # noqa: F401
 from app.domains.stock.adapter.inbound.api.stock_router import router as stock_router

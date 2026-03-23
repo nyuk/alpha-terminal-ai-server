@@ -1,8 +1,11 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Cookie, Depends
 from sqlalchemy.orm import Session
 
+from app.domains.pipeline.adapter.outbound.persistence.analysis_log_repository_impl import AnalysisLogRepositoryImpl
+from app.domains.pipeline.application.request.run_pipeline_request import RunPipelineRequest
+from app.domains.pipeline.application.response.analysis_log_response import AnalysisLogResponse
 from app.domains.pipeline.application.response.stock_summary_response import StockSummaryResponse
 from app.domains.pipeline.application.usecase.run_pipeline_usecase import RunPipelineUseCase
 from app.domains.stock_analyzer.adapter.outbound.external.openai_analyzer_adapter import OpenAIAnalyzerAdapter
@@ -21,11 +24,16 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 _settings = get_settings()
 _analysis_repository = InMemoryArticleAnalysisRepository()
-_summary_registry: dict[str, StockSummaryResponse] = {}
+_summary_registry: dict[Optional[int], dict[str, StockSummaryResponse]] = {}
 
 
 @router.post("/run")
-async def run_pipeline(db: Session = Depends(get_db)):
+async def run_pipeline(
+    request: RunPipelineRequest | None = None,
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
+    parsed_account_id = int(account_id) if account_id else None
     usecase = RunPipelineUseCase(
         watchlist_repository=WatchlistRepositoryImpl(db),
         raw_article_repository=RawArticleRepositoryImpl(db),
@@ -37,15 +45,35 @@ async def run_pipeline(db: Session = Depends(get_db)):
             analyzer_port=OpenAIAnalyzerAdapter(api_key=_settings.openai_api_key),
         ),
     )
-    result = await usecase.execute()
+    selected_symbols = request.symbols if request and request.symbols else None
+    result = await usecase.execute(selected_symbols=selected_symbols, account_id=parsed_account_id)
+
+    if parsed_account_id not in _summary_registry:
+        _summary_registry[parsed_account_id] = {}
     for summary in result["summaries"]:
-        _summary_registry[summary.symbol] = summary
+        _summary_registry[parsed_account_id][summary.symbol] = summary
+
+    log_repo = AnalysisLogRepositoryImpl(db)
+    log_repo.save_all(result.get("logs", []), account_id=parsed_account_id)
+
     return {"message": result["message"], "processed": result["processed"]}
 
 
 @router.get("/summaries", response_model=List[StockSummaryResponse])
-async def get_summaries():
-    return list(_summary_registry.values())
+async def get_summaries(account_id: Optional[str] = Cookie(default=None)):
+    parsed_account_id = int(account_id) if account_id else None
+    user_registry = _summary_registry.get(parsed_account_id, {})
+    return list(user_registry.values())
+
+
+@router.get("/logs", response_model=List[AnalysisLogResponse])
+async def get_analysis_logs(
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
+    parsed_account_id = int(account_id) if account_id else None
+    log_repo = AnalysisLogRepositoryImpl(db)
+    return log_repo.find_recent(limit=50, account_id=parsed_account_id)
 
 
 async def run_pipeline_job():

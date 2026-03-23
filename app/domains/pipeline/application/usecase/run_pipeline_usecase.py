@@ -1,7 +1,9 @@
 import asyncio
 import logging
 from datetime import datetime
+from typing import Optional
 
+from app.domains.pipeline.application.response.analysis_log_response import AnalysisLogResponse
 from app.domains.pipeline.application.response.stock_summary_response import StockSummaryResponse
 from app.domains.stock_analyzer.application.usecase.get_or_create_analysis_usecase import GetOrCreateAnalysisUseCase
 from app.domains.stock_collector.application.usecase.collect_articles_usecase import CollectArticlesUseCase
@@ -26,13 +28,20 @@ class RunPipelineUseCase:
         self._normalize_usecase = normalize_usecase
         self._analysis_usecase = analysis_usecase
 
-    async def execute(self) -> dict:
-        watchlist_items = self._watchlist_repository.find_all()
+    async def execute(self, selected_symbols: Optional[list[str]] = None, account_id: Optional[int] = None) -> dict:
+        watchlist_items = self._watchlist_repository.find_all(account_id=account_id)
         if not watchlist_items:
-            return {"message": "관심종목이 없습니다.", "processed": [], "summaries": []}
+            return {"message": "관심종목이 없습니다.", "processed": [], "summaries": [], "logs": []}
+
+        if selected_symbols:
+            selected_set = {symbol.upper() for symbol in selected_symbols}
+            watchlist_items = [item for item in watchlist_items if item.symbol.upper() in selected_set]
+            if not watchlist_items:
+                return {"message": "선택한 관심종목이 없습니다.", "processed": [], "summaries": [], "logs": []}
 
         results = []
         summaries = []
+        logs = []
 
         for item in watchlist_items:
             symbol = item.symbol
@@ -75,18 +84,29 @@ class RunPipelineUseCase:
                     continue
 
             if best_analysis:
+                tags = [t.label for t in best_analysis.tags]
                 summary = StockSummaryResponse(
                     symbol=symbol,
                     name=name,
                     summary=best_analysis.summary,
-                    tags=[t.model_dump() for t in best_analysis.tags],
+                    tags=tags,
                     sentiment=best_analysis.sentiment,
                     sentiment_score=best_analysis.sentiment_score,
                     confidence=best_analysis.confidence,
                 )
                 summaries.append(summary)
+                logs.append(AnalysisLogResponse(
+                    analyzed_at=datetime.now(),
+                    symbol=symbol,
+                    name=name,
+                    summary=best_analysis.summary,
+                    tags=tags,
+                    sentiment=best_analysis.sentiment,
+                    sentiment_score=best_analysis.sentiment_score,
+                    confidence=best_analysis.confidence,
+                ))
                 results.append({"symbol": symbol, "skipped": False, "analysis_count": 1})
             else:
                 results.append({"symbol": symbol, "skipped": True, "reason": "분석 실패"})
 
-        return {"message": "파이프라인 완료", "processed": results, "summaries": summaries}
+        return {"message": "파이프라인 완료", "processed": results, "summaries": summaries, "logs": logs}
