@@ -25,8 +25,19 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 _settings = get_settings()
 _analysis_repository = InMemoryArticleAnalysisRepository()
-_summary_registry: dict[Optional[int], dict[str, StockSummaryResponse]] = {}
-_report_summary_registry: dict[Optional[int], dict[str, StockSummaryResponse]] = {}
+
+
+def _log_to_summary(log) -> StockSummaryResponse:
+    return StockSummaryResponse(
+        symbol=log.symbol,
+        name=log.name,
+        summary=log.summary,
+        tags=log.tags,
+        sentiment=log.sentiment,
+        sentiment_score=log.sentiment_score,
+        confidence=log.confidence,
+        source_type=log.source_type,
+    )
 
 
 @router.post("/run")
@@ -50,16 +61,6 @@ async def run_pipeline(
     selected_symbols = request.symbols if request and request.symbols else None
     result = await usecase.execute(selected_symbols=selected_symbols, account_id=parsed_account_id)
 
-    if parsed_account_id not in _summary_registry:
-        _summary_registry[parsed_account_id] = {}
-    for summary in result["summaries"]:
-        _summary_registry[parsed_account_id][summary.symbol] = summary
-
-    if parsed_account_id not in _report_summary_registry:
-        _report_summary_registry[parsed_account_id] = {}
-    for summary in result.get("report_summaries", []):
-        _report_summary_registry[parsed_account_id][summary.symbol] = summary
-
     log_repo = AnalysisLogRepositoryImpl(db)
     log_repo.save_all(result.get("logs", []), account_id=parsed_account_id)
 
@@ -67,17 +68,25 @@ async def run_pipeline(
 
 
 @router.get("/summaries", response_model=List[StockSummaryResponse])
-async def get_summaries(account_id: Optional[str] = Cookie(default=None)):
+async def get_summaries(
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
     parsed_account_id = int(account_id) if account_id else None
-    user_registry = _summary_registry.get(parsed_account_id, {})
-    return list(user_registry.values())
+    log_repo = AnalysisLogRepositoryImpl(db)
+    logs = log_repo.find_latest_per_symbol(["NEWS"], account_id=parsed_account_id)
+    return [_log_to_summary(log) for log in logs]
 
 
 @router.get("/report-summaries", response_model=List[StockSummaryResponse])
-async def get_report_summaries(account_id: Optional[str] = Cookie(default=None)):
+async def get_report_summaries(
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
     parsed_account_id = int(account_id) if account_id else None
-    user_registry = _report_summary_registry.get(parsed_account_id, {})
-    return list(user_registry.values())
+    log_repo = AnalysisLogRepositoryImpl(db)
+    logs = log_repo.find_latest_per_symbol(["DISCLOSURE", "REPORT"], account_id=parsed_account_id)
+    return [_log_to_summary(log) for log in logs]
 
 
 @router.get("/logs", response_model=List[AnalysisLogResponse])

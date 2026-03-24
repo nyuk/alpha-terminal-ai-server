@@ -42,30 +42,44 @@ class RunPipelineUseCase:
             if not watchlist_items:
                 return {"message": "선택한 관심종목이 없습니다.", "processed": [], "summaries": [], "report_summaries": [], "logs": []}
 
-        results = []
-        summaries = []
-        report_summaries = []
-        logs = []
+        # Phase 1: 수집 (순차 — DB 세션 공유)
+        no_article_symbols = []
+        symbol_data: dict[str, tuple] = {}  # symbol → (name, news_articles, report_articles)
 
         for item in watchlist_items:
             symbol = item.symbol
-            name = item.name
-
             collect_usecase = CollectArticlesUseCase(self._raw_article_repository, self._collectors)
             await asyncio.to_thread(collect_usecase.execute, symbol)
 
             raw_articles = self._raw_article_repository.find_all(symbol=symbol)
             if not raw_articles:
-                results.append({"symbol": symbol, "skipped": True, "reason": "수집된 기사 없음"})
+                no_article_symbols.append(symbol)
                 continue
 
-            # 뉴스와 공시·리포트 분리
             news_articles = [r for r in raw_articles if r.source_type in NEWS_SOURCE_TYPES]
             report_articles = [r for r in raw_articles if r.source_type in REPORT_SOURCE_TYPES]
+            symbol_data[symbol] = (item.name, news_articles[:1], report_articles[:1])
 
-            news_best = await self._analyze_best(news_articles[:3], symbol)
-            report_best = await self._analyze_best(report_articles[:3], symbol)
+        # Phase 2: AI 분석 (병렬 — DB 미사용)
+        async def analyze_pair(symbol: str, name: str, news_arts, report_arts):
+            news_best, report_best = await asyncio.gather(
+                self._analyze_best(news_arts, symbol),
+                self._analyze_best(report_arts, symbol),
+            )
+            return symbol, name, news_best, report_best
 
+        analysis_results = await asyncio.gather(*[
+            analyze_pair(symbol, name, news, report)
+            for symbol, (name, news, report) in symbol_data.items()
+        ])
+
+        # Phase 3: 결과 집계
+        results = [{"symbol": s, "skipped": True, "reason": "수집된 기사 없음"} for s in no_article_symbols]
+        summaries = []
+        report_summaries = []
+        logs = []
+
+        for symbol, name, news_best, report_best in analysis_results:
             if news_best:
                 analysis, source_type, url = news_best
                 tags = [t.label for t in analysis.tags]

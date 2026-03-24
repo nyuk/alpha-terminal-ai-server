@@ -10,5 +10,9 @@ class AnalysisLogRepositoryPort(ABC):
         pass
 
     @abstractmethod
+    def find_latest_per_symbol(self, source_types: List[str], account_id: Optional[int] = None) -> List[AnalysisLogResponse]:
+        pass
+
+    @abstractmethod
     def find_recent(self, limit: int = 50, account_id: Optional[int] = None) -> List[AnalysisLogResponse]:
         pass
