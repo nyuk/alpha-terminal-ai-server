@@ -25,6 +25,7 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 _settings = get_settings()
 _analysis_repository = InMemoryArticleAnalysisRepository()
+_progress_store: dict[Optional[int], list[str]] = {}
 
 
 def _log_to_summary(log) -> StockSummaryResponse:
@@ -47,6 +48,11 @@ async def run_pipeline(
     account_id: Optional[str] = Cookie(default=None),
 ):
     parsed_account_id = int(account_id) if account_id else None
+    _progress_store[parsed_account_id] = []
+
+    def on_progress(msg: str):
+        _progress_store[parsed_account_id].append(msg)
+
     usecase = RunPipelineUseCase(
         watchlist_repository=WatchlistRepositoryImpl(db),
         raw_article_repository=RawArticleRepositoryImpl(db),
@@ -57,6 +63,7 @@ async def run_pipeline(
             analysis_repository=_analysis_repository,
             analyzer_port=OpenAIAnalyzerAdapter(api_key=_settings.openai_api_key, model=_settings.openai_model),
         ),
+        on_progress=on_progress,
     )
     selected_symbols = request.symbols if request and request.symbols else None
     result = await usecase.execute(selected_symbols=selected_symbols, account_id=parsed_account_id)
@@ -65,6 +72,14 @@ async def run_pipeline(
     log_repo.save_all(result.get("logs", []), account_id=parsed_account_id)
 
     return {"message": result["message"], "processed": result["processed"]}
+
+
+@router.get("/progress")
+async def get_progress(account_id: Optional[str] = Cookie(default=None)):
+    parsed_account_id = int(account_id) if account_id else None
+    messages = _progress_store.get(parsed_account_id, [])
+    done = bool(messages) and messages[-1].startswith("✅")
+    return {"messages": messages, "done": done}
 
 
 @router.get("/summaries", response_model=List[StockSummaryResponse])
