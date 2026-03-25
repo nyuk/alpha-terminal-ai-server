@@ -25,6 +25,7 @@ class RunPipelineUseCase:
         normalize_usecase: NormalizeRawArticleUseCase,
         analysis_usecase: GetOrCreateAnalysisUseCase,
         on_progress=None,
+        stock_repository=None,
     ):
         self._watchlist_repository = watchlist_repository
         self._raw_article_repository = raw_article_repository
@@ -32,6 +33,7 @@ class RunPipelineUseCase:
         self._normalize_usecase = normalize_usecase
         self._analysis_usecase = analysis_usecase
         self._on_progress = on_progress
+        self._stock_repository = stock_repository
 
     def _progress(self, msg: str):
         if self._on_progress:
@@ -59,8 +61,14 @@ class RunPipelineUseCase:
             symbol = item.symbol
             name = item.name
             self._progress(f"[{idx}/{total}] {name}({symbol}) 기사 수집 중...")
-            collect_usecase = CollectArticlesUseCase(self._raw_article_repository, self._collectors)
-            await asyncio.to_thread(collect_usecase.execute, symbol)
+            try:
+                collect_usecase = CollectArticlesUseCase(self._raw_article_repository, self._collectors, self._stock_repository)
+                await asyncio.to_thread(collect_usecase.execute, symbol)
+            except Exception as e:
+                logger.error(f"[Pipeline] {name}({symbol}) 수집 중 오류: {e}")
+                self._progress(f"[{idx}/{total}] {name}({symbol}) 수집 오류 — 건너뜁니다")
+                no_article_symbols.append(symbol)
+                continue
 
             raw_articles = self._raw_article_repository.find_all(symbol=symbol)
             if not raw_articles:

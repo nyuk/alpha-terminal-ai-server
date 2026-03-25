@@ -13,6 +13,12 @@ class AccountRepositoryImpl(AccountRepositoryPort):
     def __init__(self, db: Session):
         self._db = db
 
+    def find_by_id(self, account_id: int) -> Optional[Account]:
+        orm = self._db.query(AccountORM).filter(AccountORM.id == account_id).first()
+        if orm is None:
+            return None
+        return AccountMapper.to_entity(orm)
+
     def find_by_email(self, email: str) -> Optional[Account]:
         orm = self._db.query(AccountORM).filter(AccountORM.email == email).first()
         if orm is None:

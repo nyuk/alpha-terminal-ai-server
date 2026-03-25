@@ -13,6 +13,8 @@ from app.domains.news_search.adapter.inbound.api.saved_article_router import rou
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
 from app.domains.pipeline.adapter.inbound.api.pipeline_router import router as pipeline_router
 from app.domains.pipeline.infrastructure.orm.analysis_log_orm import AnalysisLogORM  # noqa: F401
+from app.domains.board.adapter.inbound.api.board_router import router as board_router
+from app.domains.board.infrastructure.orm.board_orm import BoardORM  # noqa: F401
 from app.domains.post.adapter.inbound.api.post_router import router as post_router
 from app.domains.post.infrastructure.orm.post_orm import PostORM  # noqa: F401
 from app.domains.stock.adapter.inbound.api.stock_router import router as stock_router
@@ -54,6 +56,7 @@ app.include_router(account_router)
 app.include_router(auth_router)
 app.include_router(authentication_router)
 app.include_router(kakao_authentication_router)
+app.include_router(board_router)
 app.include_router(post_router)
 app.include_router(news_search_router)
 app.include_router(saved_article_router)

@@ -14,6 +14,7 @@ from app.domains.stock_analyzer.application.usecase.get_or_create_analysis_useca
 from app.domains.stock_collector.adapter.outbound.external.dart_collector_adapter import DartCollectorAdapter
 from app.domains.stock_collector.adapter.outbound.external.dart_report_collector_adapter import DartReportCollectorAdapter
 from app.domains.stock_collector.adapter.outbound.external.news_collector_adapter import NewsCollectorAdapter
+from app.domains.stock.adapter.outbound.persistence.stock_repository_impl import StockRepositoryImpl
 from app.domains.stock_collector.adapter.outbound.persistence.raw_article_repository_impl import RawArticleRepositoryImpl
 from app.domains.stock_normalizer.application.usecase.normalize_raw_article_usecase import NormalizeRawArticleUseCase
 from app.domains.stock_normalizer.infrastructure.repository_registry import normalized_article_repository
@@ -57,6 +58,7 @@ async def run_pipeline(
     usecase = RunPipelineUseCase(
         watchlist_repository=WatchlistRepositoryImpl(db),
         raw_article_repository=RawArticleRepositoryImpl(db),
+        stock_repository=StockRepositoryImpl(db),
         collectors=[DartCollectorAdapter(), DartReportCollectorAdapter(), NewsCollectorAdapter()],
         normalize_usecase=NormalizeRawArticleUseCase(normalized_article_repository),
         analysis_usecase=GetOrCreateAnalysisUseCase(

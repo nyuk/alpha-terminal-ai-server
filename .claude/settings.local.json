@@ -23,7 +23,26 @@
       "Bash(git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server add . && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server commit -m \"Initial project setup with FastAPI base structure\" && git -C /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server push origin pr-to-upstream 2>&1)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-ai-server/**)",
+      "Bash(git rm:*)",
+      "Bash(git restore:*)",
+      "Bash(find /c/Users/nyuk8/PycharmProjects/alpha-desk/alpha-desk-frontend -name *.ts -o -name *.tsx)",
+      "Bash(git:*)",
+      "Bash(venv/Scripts/python -c \"\nimport pymysql\nconn = pymysql.connect\\(host='127.0.0.1', port=3306, user='root', password='3728243aa!', database='alpha_desk_db'\\)\ncursor = conn.cursor\\(\\)\ncursor.execute\\(\\\\\"SHOW COLUMNS FROM analysis_logs LIKE 'source_type'\\\\\"\\)\nexists = cursor.fetchone\\(\\)\nif not exists:\n    cursor.execute\\(\\\\\"ALTER TABLE analysis_logs ADD COLUMN source_type VARCHAR\\(20\\) NULL DEFAULT 'NEWS' AFTER confidence\\\\\"\\)\n    conn.commit\\(\\)\n    print\\('source_type 컬럼 추가 완료'\\)\nelse:\n    print\\('source_type 컬럼 이미 존재'\\)\nconn.close\\(\\)\n\" 2>&1)",
+      "Bash(PYTHONPATH=. venv/Scripts/python -c \"\nimport app.domains.pipeline.adapter.inbound.api.pipeline_router as r\nimport app.domains.stock_collector.adapter.outbound.external.dart_report_collector_adapter as d\nprint\\('import OK'\\)\n\" 2>&1)",
+      "Bash(PYTHONPATH=. venv/Scripts/python -c \"\nimport main\nprint\\('main import OK'\\)\n\" 2>&1)",
+      "Bash(PYTHONPATH=. venv/Scripts/python -c \"\nimport pymysql\nconn = pymysql.connect\\(host='127.0.0.1', port=3306, user='root', password='3728243aa!', database='alpha_desk_db'\\)\ncursor = conn.cursor\\(\\)\ncursor.execute\\('SELECT COUNT\\(*\\) FROM stocks'\\)\ncount = cursor.fetchone\\(\\)[0]\nprint\\(f'stocks 테이블 레코드 수: {count}'\\)\nif count > 0:\n    cursor.execute\\('SELECT symbol, name, market FROM stocks LIMIT 5'\\)\n    for row in cursor.fetchall\\(\\):\n        print\\(row\\)\nconn.close\\(\\)\n\" 2>&1)",
+      "Bash(venv/Scripts/python -c \"\nimport pymysql\nconn = pymysql.connect\\(host='127.0.0.1', port=3306, user='root', password='3728243aa!', database='alpha_desk_db'\\)\ncursor = conn.cursor\\(\\)\ncursor.execute\\(\\\\\"SELECT symbol, name, market FROM stocks WHERE name LIKE '%네이버%' OR name LIKE '%다음%' OR name LIKE '%카카오%'\\\\\"\\)\nfor row in cursor.fetchall\\(\\):\n    print\\(row\\)\nconn.close\\(\\)\n\" 2>&1)",
+      "Bash(venv/Scripts/python -c \"\nfrom app.infrastructure.database.session import SessionLocal\ndb = SessionLocal\\(\\)\ntry:\n    db.execute\\(__import__\\('sqlalchemy'\\).text\\('ALTER TABLE analysis_logs ADD COLUMN url VARCHAR\\(500\\) NULL'\\)\\)\n    db.commit\\(\\)\n    print\\('migration OK'\\)\nexcept Exception as e:\n    print\\(f'migration error \\(maybe already exists\\): {e}'\\)\nfinally:\n    db.close\\(\\)\n\")",
+      "Bash(gh repo:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d[''''title'''']\\); print\\(''''Author:'''', d[''''author''''][''''login'''']\\); print\\(''''Files:'''', len\\(d[''''files'''']\\)\\); [print\\('''' -'''', f[''''path'''']\\) for f in d[''''files''''][:15]]\")",
+      "Bash(for pr:*)",
+      "Bash(do echo:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''Title:'''', d[''''title'''']\\); print\\(''''Author:'''', d[''''author''''][''''login'''']\\); print\\(''''Files:'''', len\\(d[''''files'''']\\)\\)\" done)",
+      "Bash(npx tsc:*)",
+      "Bash(docker ps:*)",
+      "Bash(PYTHONPATH=. venv/Scripts/python -c \"from app.domains.board.adapter.inbound.api.board_router import router; from app.domains.board.infrastructure.orm.board_orm import BoardORM; print\\(''OK''\\)\")"
     ]
   }
 }

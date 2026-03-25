@@ -15,13 +15,13 @@ def start_scheduler(pipeline_run_func):
     """
     _scheduler.add_job(
         pipeline_run_func,
-        trigger=CronTrigger(hour=7, minute=0),
+        trigger=CronTrigger(hour=7, minute=0, timezone="Asia/Seoul"),
         id="daily_pipeline",
-        name="매일 07:00 파이프라인 자동 실행",
+        name="매일 07:00 KST 파이프라인 자동 실행",
         replace_existing=True,
     )
     _scheduler.start()
-    logger.info("[Scheduler] 파이프라인 스케줄러 시작 — 매일 07:00 자동 실행")
+    logger.info("[Scheduler] 파이프라인 스케줄러 시작 — 매일 07:00 KST 자동 실행")
 
 
 def stop_scheduler():

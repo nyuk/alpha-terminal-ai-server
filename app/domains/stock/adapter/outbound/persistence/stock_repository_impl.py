@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session
@@ -48,3 +48,9 @@ class StockRepositoryImpl(StockRepositoryPort):
 
     def count(self) -> int:
         return self._db.query(StockORM).count()
+
+    def find_by_symbol(self, symbol: str) -> Optional[Stock]:
+        orm = self._db.query(StockORM).filter(StockORM.symbol == symbol).first()
+        if orm is None:
+            return None
+        return StockMapper.to_entity(orm)

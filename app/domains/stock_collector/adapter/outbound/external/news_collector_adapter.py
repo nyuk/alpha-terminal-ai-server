@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 from hashlib import sha256
 from typing import List
@@ -11,38 +12,22 @@ from app.infrastructure.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-SYMBOL_TO_NAME = {
-    "005930": "삼성전자",
-    "000660": "SK하이닉스",
-    "035420": "네이버",
-    "035720": "카카오",
-    "373220": "LG에너지솔루션",
-    "005380": "현대자동차",
-    "000270": "기아",
-    "051910": "LG화학",
-    "006400": "삼성SDI",
-    "068270": "셀트리온",
-    "060250": "NHN KCP",
-}
-
 
 class NewsCollectorAdapter(CollectorPort):
     SERP_API_URL = "https://serpapi.com/search"
 
-    def collect(self, symbol: str) -> List[RawArticle]:
+    def collect(self, symbol: str, stock_name: str, corp_code: str) -> List[RawArticle]:
         settings = get_settings()
-        keyword = SYMBOL_TO_NAME.get(symbol, symbol)
-        if keyword == symbol:
-            logger.warning(f"[NewsCollector] SYMBOL_TO_NAME에 미등록 심볼: '{symbol}' — 종목 코드를 검색 키워드로 사용합니다.")
 
         params = {
             "engine": "google_news",
-            "q": keyword,
+            "q": stock_name,
             "api_key": settings.serp_api_key,
             "num": "10",
         }
 
         try:
+            time.sleep(1)
             response = httpx.get(self.SERP_API_URL, params=params, timeout=10.0)
             response.raise_for_status()
             data = response.json()

@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 from hashlib import sha256
 from typing import List, Optional, Tuple
@@ -10,26 +11,6 @@ from app.domains.stock_collector.domain.entity.raw_article import RawArticle
 from app.infrastructure.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
-
-SYMBOL_TO_CORP_CODE = {
-    "005930": "00126380",  # 삼성전자
-    "000660": "00164779",  # SK하이닉스
-    "035420": "00401731",  # 네이버
-    "035720": "00918444",  # 카카오
-    "373220": "01596594",  # LG에너지솔루션
-    "005380": "00164742",  # 현대차
-    "000270": "00113971",  # 기아
-    "051910": "00131485",  # LG화학
-    "006400": "00131372",  # 삼성SDI
-    "068270": "00259103",  # 셀트리온
-    "207940": "00434003",  # 삼성바이오로직스
-    "005490": "00104426",  # POSCO홀딩스
-    "000810": "00126955",  # 삼성화재
-    "012330": "00164788",  # 현대모비스
-    "028260": "00104256",  # 삼성물산
-    "066570": "00119548",  # LG전자
-    "060250": "00287413",  # NHN KCP
-}
 
 KEY_ACCOUNTS = {"매출액", "영업이익", "당기순이익", "자산총계", "부채총계", "자본총계"}
 
@@ -66,10 +47,9 @@ def _format_amount(value: str) -> str:
 class DartReportCollectorAdapter(CollectorPort):
     DART_FINANCIAL_URL = "https://opendart.fss.or.kr/api/fnlttSinglAcnt.json"
 
-    def collect(self, symbol: str) -> List[RawArticle]:
-        corp_code = SYMBOL_TO_CORP_CODE.get(symbol)
+    def collect(self, symbol: str, stock_name: str, corp_code: str) -> List[RawArticle]:
         if not corp_code:
-            logger.warning(f"[DartReport] 미등록 심볼: {symbol}")
+            logger.warning(f"[DartReport] corp_code 없음: {symbol}")
             return []
 
         settings = get_settings()
@@ -110,11 +90,15 @@ class DartReportCollectorAdapter(CollectorPort):
                 "fs_div": fs_div,
             }
             try:
+                time.sleep(1)
                 resp = httpx.get(self.DART_FINANCIAL_URL, params=params, timeout=15.0)
                 resp.raise_for_status()
                 data = resp.json()
+            except httpx.TimeoutException:
+                logger.warning(f"[DartReport] 요청 타임아웃: symbol={symbol}, year={bsns_year}")
+                return None
             except httpx.HTTPError as e:
-                logger.warning(f"[DartReport] API 요청 실패: {e}")
+                logger.warning(f"[DartReport] API 요청 실패: symbol={symbol}, year={bsns_year}, error={e}")
                 return None
 
             if data.get("status") != "000" or not data.get("list"):

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import List
@@ -12,12 +13,12 @@ from app.infrastructure.config.settings import get_settings
 class DartCollectorAdapter(CollectorPort):
     DART_API_URL = "https://opendart.fss.or.kr/api/list.json"
 
-    def collect(self, symbol: str) -> List[RawArticle]:
+    def collect(self, symbol: str, stock_name: str, corp_code: str) -> List[RawArticle]:
         settings = get_settings()
 
         params = {
             "crtfc_key": settings.dart_api_key,
-            "corp_code": self._get_corp_code(symbol),
+            "corp_code": corp_code,
             "bgn_de": (datetime.now() - timedelta(days=30)).strftime("%Y%m%d"),
             "end_de": datetime.now().strftime("%Y%m%d"),
             "page_no": "1",
@@ -25,13 +26,23 @@ class DartCollectorAdapter(CollectorPort):
         }
 
         try:
+            time.sleep(1)
             response = httpx.get(self.DART_API_URL, params=params, timeout=10.0)
             response.raise_for_status()
             data = response.json()
-        except httpx.HTTPError:
+        except httpx.TimeoutException:
+            import logging
+            logging.getLogger(__name__).warning(f"[DartCollector] 요청 타임아웃: symbol={symbol}")
+            return []
+        except httpx.HTTPError as e:
+            import logging
+            logging.getLogger(__name__).warning(f"[DartCollector] API 요청 실패: symbol={symbol}, error={e}")
             return []
 
-        if data.get("status") != "000":
+        dart_status = data.get("status")
+        if dart_status != "000":
+            import logging
+            logging.getLogger(__name__).info(f"[DartCollector] 공시 없음: symbol={symbol}, dart_status={dart_status}")
             return []
 
         articles = []
@@ -67,35 +78,3 @@ class DartCollectorAdapter(CollectorPort):
             )
 
         return articles
-
-    # 종목코드 → DART 고유번호 매핑
-    SYMBOL_TO_CORP_CODE = {
-        "005930": "00126380",  # 삼성전자
-        "000660": "00164779",  # SK하이닉스
-        "035420": "00401731",  # 네이버
-        "035720": "00918444",  # 카카오
-        "373220": "01596594",  # LG에너지솔루션
-        "005380": "00164742",  # 현대차
-        "000270": "00113971",  # 기아
-        "051910": "00131485",  # LG화학
-        "006400": "00131372",  # 삼성SDI
-        "068270": "00259103",  # 셀트리온
-        "207940": "00434003",  # 삼성바이오로직스
-        "005490": "00104426",  # POSCO홀딩스
-        "000810": "00126955",  # 삼성화재
-        "012330": "00164788",  # 현대모비스
-        "028260": "00104256",  # 삼성물산
-        "066570": "00119548",  # LG전자
-        "003550": "00115012",  # LG
-        "015760": "00159643",  # 한국전력
-        "096770": "00241701",  # SK이노베이션
-        "017670": "00144117",  # SK텔레콤
-        "030200": "00113028",  # KT
-        "032830": "00115388",  # 삼성생명
-        "009150": "00126380",  # 삼성전기
-        "010130": "00115012",  # 고려아연
-        "011200": "00112216",  # HMM
-    }
-
-    def _get_corp_code(self, symbol: str) -> str:
-        return self.SYMBOL_TO_CORP_CODE.get(symbol, symbol)
