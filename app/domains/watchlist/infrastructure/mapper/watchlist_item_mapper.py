@@ -7,6 +7,7 @@ class WatchlistItemMapper:
     def to_entity(orm: WatchlistItemORM) -> WatchlistItem:
         return WatchlistItem(
             id=orm.id,
+            account_id=orm.account_id,
             symbol=orm.symbol,
             name=orm.name,
             market=orm.market,
@@ -16,6 +17,7 @@ class WatchlistItemMapper:
     @staticmethod
     def to_orm(entity: WatchlistItem) -> WatchlistItemORM:
         return WatchlistItemORM(
+            account_id=entity.account_id,
             symbol=entity.symbol,
             name=entity.name,
             market=entity.market,

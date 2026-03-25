@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class MeResponse(BaseModel):
-    isTemporary: bool
+    is_registered: bool
     email: str
     nickname: Optional[str] = None
+    account_id: Optional[str] = None

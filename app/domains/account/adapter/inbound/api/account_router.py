@@ -11,7 +11,10 @@ from app.domains.account.adapter.outbound.in_memory.redis_temp_token_port_impl i
 from app.domains.account.adapter.outbound.persistence.account_repository_impl import AccountRepositoryImpl
 from app.domains.account.application.request.register_account_request import RegisterAccountRequest
 from app.domains.account.application.usecase.logout_account_usecase import LogoutAccountUseCase
-from app.domains.account.application.usecase.register_account_usecase import RegisterAccountUseCase
+from app.domains.account.application.usecase.register_account_usecase import (
+    AccountLinkConflictError,
+    RegisterAccountUseCase,
+)
 from app.infrastructure.cache.redis_client import redis_client
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.database.session import get_db
@@ -55,6 +58,8 @@ async def register_account(
         response.delete_cookie("temp_token")
         return response
 
+    except AccountLinkConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:

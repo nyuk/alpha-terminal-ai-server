@@ -11,5 +11,13 @@ class AccountRepositoryPort(ABC):
         pass
 
     @abstractmethod
+    def find_by_kakao_id(self, kakao_id: str) -> Optional[Account]:
+        pass
+
+    @abstractmethod
     def save(self, account: Account) -> Account:
+        pass
+
+    @abstractmethod
+    def update(self, account: Account) -> Account:
         pass

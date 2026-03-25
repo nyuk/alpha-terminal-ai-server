@@ -23,6 +23,7 @@ SYMBOL_TO_NAME = {
     "051910": "LG화학",
     "006400": "삼성SDI",
     "068270": "셀트리온",
+    "060250": "NHN KCP",
 }
 
 SYMBOL_TO_ENGLISH = {
@@ -36,6 +37,7 @@ SYMBOL_TO_ENGLISH = {
     "051910": "LG Chem",
     "006400": "Samsung SDI",
     "068270": "Celltrion",
+    "060250": "NHN KCP",
 }
 
 _STOCK_CODE_PATTERN = re.compile(r"^\d{6}$|^[A-Z]{1,5}(\.B)?$")
@@ -51,6 +53,8 @@ class NewsCollectorAdapter(CollectorPort):
 
         settings = get_settings()
         korean_keyword = SYMBOL_TO_NAME.get(symbol, symbol)
+        if korean_keyword == symbol:
+            logger.warning(f"[NewsCollector] SYMBOL_TO_NAME에 미등록 심볼: '{symbol}' — 종목 코드를 검색 키워드로 사용합니다.")
 
         articles = self._fetch(symbol, korean_keyword, settings)
 

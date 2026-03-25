@@ -33,7 +33,9 @@ class CheckKakaoUserRegistrationUseCase:
 
         logger.debug(f"[Kakao] nickname={user.nickname}, email={user.email}")
 
-        account = self._account_repository.find_by_email(user.email)
+        account = self._account_repository.find_by_kakao_id(user.kakao_id)
+        if account is None and user.email:
+            account = self._account_repository.find_by_email(user.email)
 
         if account:
             return KakaoAccountCheckResponse(

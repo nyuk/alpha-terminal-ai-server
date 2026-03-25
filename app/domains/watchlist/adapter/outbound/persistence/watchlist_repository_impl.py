@@ -19,14 +19,20 @@ class WatchlistRepositoryImpl(WatchlistRepositoryPort):
         self._db.refresh(orm)
         return WatchlistItemMapper.to_entity(orm)
 
-    def find_by_symbol(self, symbol: str) -> Optional[WatchlistItem]:
-        orm = self._db.query(WatchlistItemORM).filter(WatchlistItemORM.symbol == symbol).first()
+    def find_by_symbol(self, symbol: str, account_id: Optional[int] = None) -> Optional[WatchlistItem]:
+        query = self._db.query(WatchlistItemORM).filter(WatchlistItemORM.symbol == symbol)
+        if account_id is not None:
+            query = query.filter(WatchlistItemORM.account_id == account_id)
+        orm = query.first()
         if orm is None:
             return None
         return WatchlistItemMapper.to_entity(orm)
 
-    def find_all(self) -> List[WatchlistItem]:
-        orms = self._db.query(WatchlistItemORM).order_by(WatchlistItemORM.created_at.desc()).all()
+    def find_all(self, account_id: Optional[int] = None) -> List[WatchlistItem]:
+        query = self._db.query(WatchlistItemORM)
+        if account_id is not None:
+            query = query.filter(WatchlistItemORM.account_id == account_id)
+        orms = query.order_by(WatchlistItemORM.created_at.desc()).all()
         return [WatchlistItemMapper.to_entity(orm) for orm in orms]
 
     def delete_by_id(self, item_id: int) -> bool:

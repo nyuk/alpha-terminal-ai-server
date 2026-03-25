@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.domains.watchlist.adapter.outbound.persistence.watchlist_repository_impl import WatchlistRepositoryImpl
@@ -15,20 +15,27 @@ router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 
 @router.post("", response_model=WatchlistItemResponse, status_code=201)
-async def add_watchlist(request: AddWatchlistRequest, db: Session = Depends(get_db)):
+async def add_watchlist(
+    request: AddWatchlistRequest,
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
     repository = WatchlistRepositoryImpl(db)
     usecase = AddWatchlistUseCase(repository)
     try:
-        return usecase.execute(request)
+        return usecase.execute(request, account_id=int(account_id) if account_id else None)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("", response_model=List[WatchlistItemResponse])
-async def get_watchlist(db: Session = Depends(get_db)):
+async def get_watchlist(
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
     repository = WatchlistRepositoryImpl(db)
     usecase = GetWatchlistUseCase(repository)
-    return usecase.execute()
+    return usecase.execute(account_id=int(account_id) if account_id else None)
 
 
 @router.delete("/{item_id}", status_code=204)

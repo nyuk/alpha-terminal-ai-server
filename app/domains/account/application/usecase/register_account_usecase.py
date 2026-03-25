@@ -11,6 +11,10 @@ from app.domains.account.domain.entity.account import Account
 logger = logging.getLogger(__name__)
 
 
+class AccountLinkConflictError(Exception):
+    pass
+
+
 class RegisterAccountUseCase:
 
     def __init__(
@@ -26,13 +30,30 @@ class RegisterAccountUseCase:
         self._session_store = session_store
 
     def execute(self, temp_token: str, request: RegisterAccountRequest) -> RegisterAccountResponse:
-        kakao_access_token = self._temp_token_port.find(temp_token)
-        if not kakao_access_token:
+        temp_token_data = self._temp_token_port.find(temp_token)
+        if not temp_token_data:
             raise ValueError("임시 토큰이 유효하지 않거나 만료되었습니다.")
 
-        account = self._account_repository.save(
-            Account(email=request.email, kakao_id=request.email, nickname=request.nickname)
-        )
+        kakao_access_token = temp_token_data.get("kakao_access_token")
+        kakao_id = temp_token_data.get("kakao_id")
+        if not kakao_access_token or not kakao_id:
+            raise ValueError("임시 토큰 정보가 올바르지 않습니다.")
+
+        account = self._account_repository.find_by_kakao_id(kakao_id)
+        if account is None:
+            existing_email_account = self._account_repository.find_by_email(request.email)
+            if existing_email_account:
+                # 과거 버그로 kakao_id 대신 email이 저장된 계정은 현재 Kakao ID로 복구한다.
+                if existing_email_account.kakao_id == existing_email_account.email:
+                    existing_email_account.kakao_id = kakao_id
+                    existing_email_account.nickname = request.nickname
+                    account = self._account_repository.update(existing_email_account)
+                else:
+                    raise AccountLinkConflictError("이미 다른 카카오 계정에 연결된 이메일입니다.")
+            else:
+                account = self._account_repository.save(
+                    Account(email=request.email, kakao_id=kakao_id, nickname=request.nickname)
+                )
 
         self._temp_token_port.delete(temp_token)
 

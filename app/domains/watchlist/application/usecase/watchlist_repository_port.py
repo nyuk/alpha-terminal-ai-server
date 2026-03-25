@@ -10,11 +10,11 @@ class WatchlistRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    def find_by_symbol(self, symbol: str) -> Optional[WatchlistItem]:
+    def find_by_symbol(self, symbol: str, account_id: Optional[int] = None) -> Optional[WatchlistItem]:
         pass
 
     @abstractmethod
-    def find_all(self) -> List[WatchlistItem]:
+    def find_all(self, account_id: Optional[int] = None) -> List[WatchlistItem]:
         pass
 
     @abstractmethod

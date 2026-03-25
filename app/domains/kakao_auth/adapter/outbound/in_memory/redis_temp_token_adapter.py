@@ -6,7 +6,7 @@ import redis
 from app.domains.kakao_auth.application.usecase.temp_token_store_port import TempTokenStorePort
 
 TEMP_TOKEN_KEY_PREFIX = "temp_token:"
-TEMP_TOKEN_TTL_SECONDS = 300  # 5분
+TEMP_TOKEN_TTL_SECONDS = 1800  # 30분
 
 
 class RedisTempTokenAdapter(TempTokenStorePort):

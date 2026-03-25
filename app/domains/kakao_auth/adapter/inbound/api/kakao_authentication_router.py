@@ -10,7 +10,10 @@ from app.domains.account.adapter.outbound.persistence.account_repository_impl im
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
 from app.domains.kakao_auth.adapter.outbound.external.kakao_oauth_adapter import KakaoOAuthAdapter
 from app.domains.kakao_auth.adapter.outbound.external.kakao_token_adapter import KakaoTokenAdapter
-from app.domains.kakao_auth.adapter.outbound.in_memory.redis_temp_token_adapter import RedisTempTokenAdapter
+from app.domains.kakao_auth.adapter.outbound.in_memory.redis_temp_token_adapter import (
+    RedisTempTokenAdapter,
+    TEMP_TOKEN_TTL_SECONDS,
+)
 from app.domains.kakao_auth.application.response.kakao_login_response import KakaoLoginResponse
 from app.domains.kakao_auth.application.usecase.check_kakao_user_registration_usecase import CheckKakaoUserRegistrationUseCase
 from app.domains.kakao_auth.application.usecase.generate_kakao_oauth_url_usecase import GenerateKakaoOAuthUrlUseCase
@@ -78,9 +81,25 @@ async def request_access_token_after_redirection(
             response.set_cookie(key="account_id", value=str(result.account_id), max_age=3600 * 24 * 7, samesite="lax")
 
         if result.temp_token_issued and result.temp_token:
-            response.set_cookie(key="temp_token", value=result.temp_token, httponly=True, max_age=300, samesite="lax")
-            response.set_cookie(key="kakao_nickname", value=quote(result.nickname), max_age=300, samesite="lax")
-            response.set_cookie(key="kakao_email", value=quote(result.email), max_age=300, samesite="lax")
+            response.set_cookie(
+                key="temp_token",
+                value=result.temp_token,
+                httponly=True,
+                max_age=TEMP_TOKEN_TTL_SECONDS,
+                samesite="lax",
+            )
+            response.set_cookie(
+                key="kakao_nickname",
+                value=quote(result.nickname),
+                max_age=TEMP_TOKEN_TTL_SECONDS,
+                samesite="lax",
+            )
+            response.set_cookie(
+                key="kakao_email",
+                value=quote(result.email),
+                max_age=TEMP_TOKEN_TTL_SECONDS,
+                samesite="lax",
+            )
 
         return response
 
