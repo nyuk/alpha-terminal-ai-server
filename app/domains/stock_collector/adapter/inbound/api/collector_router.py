@@ -5,13 +5,17 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.domains.stock_collector.adapter.outbound.external.dart_collector_adapter import DartCollectorAdapter
+from app.domains.stock_collector.adapter.outbound.external.google_news_rss_collector_adapter import GoogleNewsRssCollectorAdapter
+from app.domains.stock_collector.adapter.outbound.external.naver_blog_cafe_collector_adapter import NaverBlogCafeCollectorAdapter
 from app.domains.stock_collector.adapter.outbound.external.news_collector_adapter import NewsCollectorAdapter
+from app.domains.stock_collector.adapter.outbound.external.twitter_collector_adapter import TwitterCollectorAdapter
 from app.domains.stock_collector.adapter.outbound.persistence.raw_article_repository_impl import RawArticleRepositoryImpl
 from app.domains.stock_collector.application.request.collect_request import CollectRequest
 from app.domains.stock_collector.application.response.article_response import ArticleResponse
 from app.domains.stock_collector.application.response.collect_response import CollectResponse
 from app.domains.stock_collector.application.usecase.collect_articles_usecase import CollectArticlesUseCase
 from app.domains.stock_collector.application.usecase.get_articles_usecase import GetArticlesUseCase
+from app.domains.stock.adapter.outbound.persistence.stock_repository_impl import StockRepositoryImpl
 from app.infrastructure.database.session import get_db
 
 logger = logging.getLogger(__name__)
@@ -36,8 +40,9 @@ _NAME_TO_CODE = {
 @router.post("/collect", response_model=CollectResponse, status_code=200)
 async def collect_articles(request: CollectRequest, db: Session = Depends(get_db)):
     repository = RawArticleRepositoryImpl(db)
-    collectors = [DartCollectorAdapter(), NewsCollectorAdapter()]
-    usecase = CollectArticlesUseCase(repository, collectors)
+    stock_repository = StockRepositoryImpl(db)
+    collectors = [DartCollectorAdapter(), NewsCollectorAdapter(), GoogleNewsRssCollectorAdapter(), NaverBlogCafeCollectorAdapter()]
+    usecase = CollectArticlesUseCase(repository, collectors, stock_repository=stock_repository)
     return usecase.execute(request.symbol)
 
 

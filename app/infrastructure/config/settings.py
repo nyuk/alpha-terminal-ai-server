@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     twelve_data_api_key: str = ""
     # BL-BE-15: False면 히트맵 캐시는 인메모리만
     heatmap_redis_cache_enabled: bool = True
+    naver_client_id: str = ""
+    naver_secret: str = ""
+    twitter_bearer_token: str = ""
     dart_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1-mini"

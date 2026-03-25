@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class CollectedItem(BaseModel):
     id: Optional[int] = None
     source_type: str
+    source_name: str = ""
     title: str
 
 

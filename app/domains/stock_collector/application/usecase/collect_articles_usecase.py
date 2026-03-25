@@ -54,6 +54,7 @@ class CollectArticlesUseCase:
                     CollectedItem(
                         id=saved.id,
                         source_type=saved.source_type,
+                        source_name=saved.source_name,
                         title=saved.title,
                     )
                 )
