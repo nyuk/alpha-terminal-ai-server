@@ -26,11 +26,15 @@ from app.domains.stock_normalizer.adapter.inbound.api.normalizer_router import r
 from app.domains.watchlist.adapter.inbound.api.watchlist_router import router as watchlist_router
 from app.domains.watchlist.infrastructure.orm.watchlist_item_orm import WatchlistItemORM  # noqa: F401
 from app.domains.card_share.adapter.inbound.api.card_share_router import router as card_share_router
+from app.domains.public.adapter.inbound.api.public_router import router as public_router
 from app.domains.market_video.adapter.inbound.api.youtube_router import router as youtube_router
 from app.domains.market_video.adapter.inbound.api.market_video_collect_router import router as market_video_collect_router
 from app.domains.market_video.adapter.inbound.api.video_comment_router import router as video_comment_router
 from app.domains.market_video.adapter.inbound.api.noun_extraction_router import router as noun_extraction_router
 from app.domains.market_video.infrastructure.orm.market_video_orm import MarketVideoORM  # noqa: F401
+from app.domains.youtube.adapter.inbound.api.youtube_router import router as market_video_router
+from app.domains.youtube.infrastructure.orm.youtube_video_orm import YouTubeVideoORM  # noqa: F401
+from app.domains.youtube.infrastructure.orm.youtube_comment_orm import YouTubeCommentORM  # noqa: F401
 from app.domains.card_share.infrastructure.orm.shared_card_orm import SharedCardORM  # noqa: F401
 from app.domains.card_share.infrastructure.orm.card_like_orm import CardLikeORM  # noqa: F401
 from app.domains.card_share.infrastructure.orm.card_comment_orm import CardCommentORM  # noqa: F401
@@ -41,6 +45,24 @@ from app.infrastructure.scheduler.pipeline_scheduler import start_scheduler, sto
 settings: Settings = get_settings()
 
 Base.metadata.create_all(bind=engine)
+
+
+def _run_column_migrations():
+    """create_all이 처리하지 못하는 기존 테이블 컬럼 추가를 수동으로 실행."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_watchlist_public BOOLEAN NOT NULL DEFAULT FALSE",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass
+
+
+_run_column_migrations()
 
 
 @asynccontextmanager
@@ -76,10 +98,12 @@ app.include_router(stock_router)
 app.include_router(analyzer_router)
 app.include_router(pipeline_router)
 app.include_router(card_share_router)
+app.include_router(public_router)
 app.include_router(youtube_router)
 app.include_router(market_video_collect_router)
 app.include_router(video_comment_router)
 app.include_router(noun_extraction_router)
+app.include_router(market_video_router)
 
 
 @app.get("/")

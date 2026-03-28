@@ -3,6 +3,7 @@ from typing import List
 from app.domains.market_video.application.response.noun_frequency_response import (
     NounFrequencyItem,
     NounFrequencyResponse,
+    WordCloudItem,
 )
 from app.domains.market_video.application.usecase.morph_analyzer_port import MorphAnalyzerPort
 from app.domains.market_video.application.usecase.video_comment_port import VideoCommentPort
@@ -24,7 +25,7 @@ class ExtractNounsUseCase:
         video_ids: List[str],
         order: str = "relevance",
         max_per_video: int = 20,
-        top_n: int = 50,
+        top_n: int = 30,
     ) -> NounFrequencyResponse:
         """
         :param video_ids: market_videos 테이블에서 조회한 video_id 목록
@@ -33,7 +34,7 @@ class ExtractNounsUseCase:
         :param top_n: 반환할 상위 명사 수
         """
         if not video_ids:
-            return NounFrequencyResponse(keywords=[], total_noun_count=0, analyzed_video_count=0)
+            return NounFrequencyResponse(keywords=[], word_cloud_data=[], total_noun_count=0, analyzed_video_count=0)
 
         all_nouns: List[str] = []
         analyzed_count = 0
@@ -49,13 +50,14 @@ class ExtractNounsUseCase:
                 all_nouns.extend(self._service.filter_nouns(raw_nouns))
 
         freq = self._service.count_frequencies(all_nouns)
-        top_keywords = [
-            NounFrequencyItem(noun=noun, count=count)
-            for noun, count in list(freq.items())[:top_n]
-        ]
+        top_items = list(freq.items())[:top_n]
+
+        top_keywords = [NounFrequencyItem(noun=noun, count=count) for noun, count in top_items]
+        word_cloud_data = [WordCloudItem(text=noun, value=count) for noun, count in top_items]
 
         return NounFrequencyResponse(
             keywords=top_keywords,
+            word_cloud_data=word_cloud_data,
             total_noun_count=len(all_nouns),
             analyzed_video_count=analyzed_count,
         )

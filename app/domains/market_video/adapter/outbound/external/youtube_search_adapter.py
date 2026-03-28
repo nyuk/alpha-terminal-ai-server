@@ -28,6 +28,17 @@ class YoutubeSearchAdapter(YoutubeSearchPort):
             params["pageToken"] = page_token
 
         response = httpx.get(self.YOUTUBE_API_URL, params=params, timeout=10.0)
+
+        if response.status_code == 403:
+            error_reason = (
+                response.json()
+                .get("error", {})
+                .get("errors", [{}])[0]
+                .get("reason", "unknown")
+            )
+            raise PermissionError(f"YouTube API 접근 거부 (reason={error_reason}). "
+                                  "Google Cloud Console에서 YouTube Data API v3 활성화 및 키 제한 설정을 확인하세요.")
+
         response.raise_for_status()
         data = response.json()
 

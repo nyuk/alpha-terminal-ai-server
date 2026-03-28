@@ -21,7 +21,7 @@ _session_adapter = RedisSessionAdapter(redis_client)
 async def extract_nouns(
     order: Literal["relevance", "time"] = Query(default="relevance", description="댓글 정렬: relevance(인기순) | time(최신순)"),
     max_per_video: int = Query(default=20, ge=1, le=100, description="영상당 최대 수집 댓글 수"),
-    top_n: int = Query(default=50, ge=1, le=200, description="반환할 상위 명사 개수"),
+    top_n: int = Query(default=30, ge=1, le=200, description="반환할 상위 명사 개수"),
     user_token: Optional[str] = Cookie(default=None),
     db: Session = Depends(get_db),
 ):

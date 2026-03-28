@@ -62,6 +62,34 @@ class AnalysisLogRepositoryImpl(AnalysisLogRepositoryPort):
                 ))
         return result
 
+    def find_latest_by_symbols(self, symbols: List[str]) -> List[AnalysisLogResponse]:
+        upper_symbols = [s.upper() for s in symbols]
+        orms = (
+            self._db.query(AnalysisLogORM)
+            .filter(AnalysisLogORM.symbol.in_(upper_symbols))
+            .order_by(AnalysisLogORM.analyzed_at.desc())
+            .all()
+        )
+        seen: set = set()
+        result = []
+        for orm in orms:
+            if orm.symbol not in seen:
+                seen.add(orm.symbol)
+                result.append(AnalysisLogResponse(
+                    analyzed_at=orm.analyzed_at,
+                    symbol=orm.symbol,
+                    name=orm.name,
+                    summary=orm.summary,
+                    tags=orm.tags or [],
+                    sentiment=orm.sentiment,
+                    sentiment_score=orm.sentiment_score,
+                    confidence=orm.confidence,
+                    source_type=orm.source_type or "NEWS",
+                    account_id=orm.account_id,
+                    url=orm.url,
+                ))
+        return result
+
     def find_by_symbol(self, symbol: str, limit: int = 20) -> List[AnalysisLogResponse]:
         orms = (
             self._db.query(AnalysisLogORM)

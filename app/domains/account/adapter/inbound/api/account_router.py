@@ -10,11 +10,14 @@ from app.domains.account.adapter.outbound.in_memory.redis_kakao_token_adapter im
 from app.domains.account.adapter.outbound.in_memory.redis_temp_token_port_impl import RedisTempTokenPortImpl
 from app.domains.account.adapter.outbound.persistence.account_repository_impl import AccountRepositoryImpl
 from app.domains.account.application.request.register_account_request import RegisterAccountRequest
+from app.domains.account.application.request.update_settings_request import UpdateSettingsRequest
+from app.domains.account.application.response.account_settings_response import AccountSettingsResponse
 from app.domains.account.application.usecase.logout_account_usecase import LogoutAccountUseCase
 from app.domains.account.application.usecase.register_account_usecase import (
     AccountLinkConflictError,
     RegisterAccountUseCase,
 )
+from app.domains.account.infrastructure.orm.account_orm import AccountORM
 from app.infrastructure.cache.redis_client import redis_client
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.database.session import get_db
@@ -65,6 +68,35 @@ async def register_account(
     except Exception as e:
         logger.exception("회원가입 처리 중 오류 발생")
         raise HTTPException(status_code=400, detail="내부 오류가 발생했습니다.")
+
+
+@router.get("/settings", response_model=AccountSettingsResponse)
+async def get_account_settings(
+    account_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    if not account_id:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    orm = db.query(AccountORM).filter(AccountORM.id == int(account_id)).first()
+    if orm is None:
+        raise HTTPException(status_code=404, detail="계정을 찾을 수 없습니다.")
+    return AccountSettingsResponse(is_watchlist_public=bool(orm.is_watchlist_public))
+
+
+@router.patch("/settings", response_model=AccountSettingsResponse)
+async def update_account_settings(
+    request: UpdateSettingsRequest,
+    account_id: str = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    if not account_id:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    orm = db.query(AccountORM).filter(AccountORM.id == int(account_id)).first()
+    if orm is None:
+        raise HTTPException(status_code=404, detail="계정을 찾을 수 없습니다.")
+    orm.is_watchlist_public = request.is_watchlist_public
+    db.commit()
+    return AccountSettingsResponse(is_watchlist_public=bool(orm.is_watchlist_public))
 
 
 @router.post("/logout")

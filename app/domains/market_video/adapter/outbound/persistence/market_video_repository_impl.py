@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -50,3 +50,18 @@ class MarketVideoRepositoryImpl(MarketVideoRepositoryPort):
             return []
 
         return saved
+
+    def find_paginated(
+        self,
+        page: int,
+        page_size: int,
+        stock_name: Optional[str] = None,
+    ) -> Tuple[List[MarketVideo], int]:
+        query = self._db.query(MarketVideoORM).order_by(MarketVideoORM.published_at.desc())
+
+        if stock_name:
+            query = query.filter(MarketVideoORM.title.contains(stock_name))
+
+        total = query.count()
+        orms = query.offset((page - 1) * page_size).limit(page_size).all()
+        return [MarketVideoMapper.to_entity(orm) for orm in orms], total
