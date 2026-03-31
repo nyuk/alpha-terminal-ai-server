@@ -54,7 +54,7 @@ def _run_column_migrations():
     """create_all이 처리하지 못하는 기존 테이블 컬럼 추가를 수동으로 실행."""
     from sqlalchemy import text
     migrations = [
-        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_watchlist_public BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_watchlist_public BOOLEAN NOT NULL DEFAULT TRUE",
     ]
     with engine.connect() as conn:
         for sql in migrations:

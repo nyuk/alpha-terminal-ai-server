@@ -13,4 +13,4 @@ class AccountORM(Base):
     kakao_id = Column(String(50), nullable=False, unique=True)
     nickname = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
-    is_watchlist_public = Column(Boolean, default=False, nullable=False)
+    is_watchlist_public = Column(Boolean, default=True, nullable=False)
