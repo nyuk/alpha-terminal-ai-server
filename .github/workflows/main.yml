@@ -64,7 +64,7 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 5
+          sleep 15
           if curl -sSf http://localhost:33333/docs > /dev/null; then
             echo "alphadesk-api is UP"
           else
