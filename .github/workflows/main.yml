@@ -34,6 +34,8 @@ jobs:
           push: true
           tags: ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:latest
           platforms: linux/arm64
+          cache-from: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:cache
+          cache-to: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:cache,mode=max
 
   deploy:
     needs: build-and-push
