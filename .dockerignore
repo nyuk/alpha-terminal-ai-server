@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+docs/
+*.md
+server.pid
+PROJECT_ANALYSIS.md
