@@ -188,3 +188,5 @@ main merge만 하면 환경변수 잘림 문제가 발생하지 않는다.
 메타데이터는 **MySQL**, 기사 본문 JSON은 **PostgreSQL(JSONB)** 에 둡니다. EC2 `.env`의 **`PG_HOST`는 API 컨테이너 기준**이어야 합니다. 같은 Docker 네트워크에 Postgres 서비스 이름이 `postgres`이면 `PG_HOST=postgres`처럼 지정하고, **`PG_HOST=localhost`는 컨테이너 안에서는 호스트 DB를 가리키지 않습니다.**
 
 Postgres가 없거나 연결이 실패해도 API는 기동하고, 저장 시 MySQL만 성공하도록 동작할 수 있습니다(본문·일부 분석 기능은 제한). 운영에서 본문 저장까지 쓰려면 Postgres를 띄우고 `PG_USER`, `PG_PASSWORD`, `PG_DATABASE` 등을 맞춥니다.
+
+**EC2에 Postgres 올리기(로컬 Docker와 동일 이미지·볼륨 패턴):** [EC2-POSTGRES.md](./EC2-POSTGRES.md) · `docs/deployment/docker-compose.postgres.ec2.yml`

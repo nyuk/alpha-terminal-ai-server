@@ -1,0 +1,30 @@
+# EC2: PostgreSQL만 기동 (로컬 codelab/docker-compose.yml 의 postgres 서비스와 동일 스펙)
+#
+# 사전 조건: docker network create alphadesk-network (GitHub Actions 배포와 동일 네트워크)
+#
+# 사용 예 (서버의 BE .env 를 그대로 참조 — PG_USER / PG_PASSWORD / PG_DATABASE 값이 Postgres 초기 계정과 일치해야 함):
+#   cd /home/ec2-user/alpha-terminal-ai-server
+#   docker compose -f docs/deployment/docker-compose.postgres.ec2.yml --env-file .env up -d
+#
+# 최초 기동 후 API 컨테이너 재시작(또는 main 배포 한 번)으로 create_all 이 JSONB 테이블을 만듭니다.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: alphadesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-eddi}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE:-appdb}
+    volumes:
+      - alphadesk_pg_data:/var/lib/postgresql/data
+    networks:
+      - alphadesk-network
+
+volumes:
+  alphadesk_pg_data:
+
+networks:
+  alphadesk-network:
+    external: true

@@ -109,9 +109,9 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "33333"]
 
 ---
 
-## 6. docker-compose.yml (API + MySQL + Redis)
+## 6. docker-compose.yml (API + MySQL + Redis + PostgreSQL)
 
-프로젝트 루트에 `docker-compose.prod.yml` 등으로 저장:
+프로젝트 루트에 `docker-compose.prod.yml` 등으로 저장. **PostgreSQL** 은 로컬 모노레포와 동일하게 `pgvector/pgvector:pg16` · DB `appdb` 등(자세한 절차는 [EC2-POSTGRES.md](./EC2-POSTGRES.md)):
 
 ```yaml
 services:
@@ -140,6 +140,16 @@ services:
     volumes:
       - redis_data:/data
 
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-eddi}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE:-appdb}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
   api:
     build: .
     restart: unless-stopped
@@ -154,18 +164,23 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      PG_HOST: postgres
+      PG_PORT: "5432"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
+      postgres:
+        condition: service_started
 
 volumes:
   mysql_data:
   redis_data:
+  pg_data:
 ```
 
-`.env`는 **서버에만** 두고, `MYSQL_*`·`REDIS_*`가 위 `environment`와 **중복되면 compose의 값이 우선**될 수 있으므로 `.env`에는 나머지(API 키, `CORS_ALLOWED_FRONTEND_URL` 등) 위주로 맞춤.
+`.env`는 **서버에만** 두고, `MYSQL_*`·`REDIS_*`·**`PG_*`**(`PG_USER`, `PG_PASSWORD`, `PG_DATABASE`; 컨테이너 안 호스트명은 compose가 `PG_HOST=postgres`로 덮어씀)가 위와 맞아야 합니다. 나머지는 API 키, `CORS_ALLOWED_FRONTEND_URL` 등.
 
 **최초 1회:** DB 스키마는 앱의 `Base.metadata.create_all` 또는 기존 마이그레이션 절차대로.
 
@@ -177,6 +192,7 @@ volumes:
 
 - `MYSQL_*` — compose와 동일하게
 - `REDIS_HOST` — 컨테이너 밖에서 테스트할 땐 무시되고, API 컨테이너 안에서는 compose의 `REDIS_HOST=redis`가 적용
+- `PG_USER`, `PG_PASSWORD`, `PG_DATABASE` — `postgres` 서비스의 `POSTGRES_*` 와 동일해야 함(GitHub Actions만 쓰고 compose 없이 띄우는 경우는 [EC2-POSTGRES.md](./EC2-POSTGRES.md))
 - `CORS_ALLOWED_FRONTEND_URL` — 실제 프론트 주소(예: `https://app.example.com` 또는 PoC 중 `http://<EC2_IP>:3000` 등)
 - `FRONTEND_AUTH_CALLBACK_URL`, Kakao Redirect URI와 일치
 
