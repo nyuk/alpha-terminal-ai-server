@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     openai_responses_model: str = "gpt-5-mini"
     # BL-BE-51: 추천 이유 문장 전용 (기본 gpt-5-mini)
     openai_recommendation_reason_model: str = "gpt-5-mini"
+    # LangGraph 멀티 에이전트 그래프 전용 모델
+    langgraph_model: str = "gpt-4.1-mini"
     youtube_api_key: str = ""
     cors_allowed_frontend_url: str = "http://localhost:3000"
     frontend_auth_callback_url: str = "http://localhost:3000/auth-callback"

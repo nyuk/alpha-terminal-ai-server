@@ -8,7 +8,7 @@ from app.infrastructure.database.pg_session import PgBase
 
 
 class SavedArticleContentORM(PgBase):
-    __tablename__ = "saved_article_contents"
+    __tablename__ = "interest_article_contents"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     article_id = Column(Integer, nullable=False, index=True)

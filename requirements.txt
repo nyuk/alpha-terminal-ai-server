@@ -12,7 +12,9 @@ tweepy>=4.14.0
 kiwipiepy>=0.17.0
 langchain>=0.3.0
 langchain-openai>=0.3.0
+langgraph>=0.2.0
 psycopg2-binary>=2.9.0
 alembic>=1.13.0
 pytest>=8.0.0
 trafilatura
+lxml_html_clean

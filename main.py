@@ -67,21 +67,73 @@ except Exception:
 def _run_column_migrations():
     """create_all이 처리하지 못하는 기존 테이블 컬럼 추가를 수동으로 실행."""
     from sqlalchemy import text
-    migrations = [
-        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_watchlist_public BOOLEAN NOT NULL DEFAULT TRUE",
-        # BL-BE-60: saved_articles — account_id 추가, content 제거, unique constraint 변경
-        "ALTER TABLE saved_articles ADD COLUMN IF NOT EXISTS account_id INT NOT NULL DEFAULT 0",
-        "ALTER TABLE saved_articles DROP COLUMN IF EXISTS content",
-        "ALTER TABLE saved_articles DROP INDEX link_hash",
-        "ALTER TABLE saved_articles ADD UNIQUE INDEX uq_saved_articles_account_link (account_id, link_hash)",
-    ]
+
+    def _column_exists(conn, table: str, column: str) -> bool:
+        row = conn.execute(text(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c"
+        ), {"t": table, "c": column}).scalar()
+        return row > 0
+
+    def _index_exists(conn, table: str, index: str) -> bool:
+        row = conn.execute(text(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND INDEX_NAME = :i"
+        ), {"t": table, "i": index}).scalar()
+        return row > 0
+
     with engine.connect() as conn:
-        for sql in migrations:
+        # accounts — is_watchlist_public
+        if not _column_exists(conn, "accounts", "is_watchlist_public"):
             try:
-                conn.execute(text(sql))
+                conn.execute(text(
+                    "ALTER TABLE accounts ADD COLUMN is_watchlist_public BOOLEAN NOT NULL DEFAULT TRUE"
+                ))
                 conn.commit()
-            except Exception:
-                pass
+                logger.info("[migration] accounts.is_watchlist_public 추가 완료")
+            except Exception as e:
+                logger.warning(f"[migration] accounts.is_watchlist_public 추가 실패: {e}")
+
+        # saved_articles — account_id 추가
+        if not _column_exists(conn, "saved_articles", "account_id"):
+            try:
+                conn.execute(text(
+                    "ALTER TABLE saved_articles ADD COLUMN account_id INT NOT NULL DEFAULT 0"
+                ))
+                conn.commit()
+                logger.info("[migration] saved_articles.account_id 추가 완료")
+            except Exception as e:
+                logger.warning(f"[migration] saved_articles.account_id 추가 실패: {e}")
+
+        # saved_articles — content 컬럼 제거
+        if _column_exists(conn, "saved_articles", "content"):
+            try:
+                conn.execute(text("ALTER TABLE saved_articles DROP COLUMN content"))
+                conn.commit()
+                logger.info("[migration] saved_articles.content 제거 완료")
+            except Exception as e:
+                logger.warning(f"[migration] saved_articles.content 제거 실패: {e}")
+
+        # saved_articles — 구 link_hash 단독 인덱스 제거
+        if _index_exists(conn, "saved_articles", "link_hash"):
+            try:
+                conn.execute(text("ALTER TABLE saved_articles DROP INDEX link_hash"))
+                conn.commit()
+                logger.info("[migration] saved_articles.link_hash 인덱스 제거 완료")
+            except Exception as e:
+                logger.warning(f"[migration] saved_articles.link_hash 인덱스 제거 실패: {e}")
+
+        # saved_articles — (account_id, link_hash) unique 인덱스 추가
+        if not _index_exists(conn, "saved_articles", "uq_saved_articles_account_link"):
+            try:
+                conn.execute(text(
+                    "ALTER TABLE saved_articles "
+                    "ADD UNIQUE INDEX uq_saved_articles_account_link (account_id, link_hash)"
+                ))
+                conn.commit()
+                logger.info("[migration] saved_articles unique constraint 추가 완료")
+            except Exception as e:
+                logger.warning(f"[migration] saved_articles unique constraint 추가 실패: {e}")
 
 
 _run_column_migrations()

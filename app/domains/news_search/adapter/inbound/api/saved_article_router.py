@@ -13,6 +13,7 @@ from app.domains.news_search.application.request.save_article_request import Sav
 from app.domains.news_search.application.response.analyze_article_response import AnalyzeArticleResponse
 from app.domains.news_search.application.response.bulk_analyze_response import BulkAnalyzeResponse
 from app.domains.news_search.application.response.save_article_response import SaveArticleResponse
+from app.domains.news_search.application.response.save_interest_article_response import SaveInterestArticleResponse
 from app.domains.news_search.application.response.saved_article_item_response import SavedArticleListResponse
 from app.domains.news_search.application.usecase.analyze_article_usecase import AnalyzeArticleUseCase
 from app.domains.news_search.application.usecase.bulk_analyze_usecase import BulkAnalyzeUseCase
@@ -43,6 +44,35 @@ async def list_saved_articles(
     content_store = ArticleContentStoreImpl(pg_db)
     usecase = ListSavedArticlesUseCase(repository, content_store)
     return usecase.execute(int(account_id))
+
+
+@router.post("/interest-articles", response_model=SaveInterestArticleResponse, status_code=201)
+async def save_interest_article(
+    request: SaveArticleRequest,
+    db: Session = Depends(get_db),
+    pg_db: Session = Depends(get_pg_db),
+    account_id: Optional[str] = Cookie(default=None),
+):
+    if account_id is None:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    parsed_account_id = int(account_id)
+
+    repository = SavedArticleRepositoryImpl(db)
+    content_store = ArticleContentStoreImpl(pg_db)
+    usecase = SaveArticleUseCase(repository, content_store, _content_fetcher)
+    try:
+        result = usecase.execute(request, account_id=parsed_account_id)
+        content = content_store.get_content(result.id) or ""
+        return SaveInterestArticleResponse(
+            id=result.id,
+            title=request.title,
+            source=request.source or "",
+            link=request.link,
+            published_at=request.published_at,
+            content=content,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.post("/saved", response_model=SaveArticleResponse, status_code=201)

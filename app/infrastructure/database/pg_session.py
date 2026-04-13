@@ -14,18 +14,19 @@ from app.infrastructure.config.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
-def _build_pg_url() -> str:
+def _build_pg_engine():
+    import os
     s = get_settings()
-    return (
+    # Windows 한글 환경에서 libpq가 시스템 pgpass 파일을 읽다가
+    # UnicodeDecodeError가 발생하는 것을 방지하기 위해 환경변수로 우회
+    os.environ.setdefault("PGPASSWORD", s.pg_password)
+    os.environ["PGPASSFILE"] = "NUL"  # Windows /dev/null — pgpass 파일 참조 비활성화
+    url = (
         f"postgresql+psycopg2://{s.pg_user}:{quote_plus(s.pg_password)}"
         f"@{s.pg_host}:{s.pg_port}/{s.pg_database}"
     )
-
-
-def _build_pg_engine():
-    s = get_settings()
     return create_engine(
-        _build_pg_url(),
+        url,
         pool_size=s.pg_pool_size,
         max_overflow=s.pg_max_overflow,
         pool_pre_ping=True,
