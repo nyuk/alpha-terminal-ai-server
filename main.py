@@ -45,6 +45,10 @@ from app.domains.stock_theme.infrastructure.orm.stock_theme_orm import StockThem
 from app.domains.user_profile.infrastructure.orm.user_profile_orm import UserProfileORM  # noqa: F401
 from app.domains.user_profile.infrastructure.orm.user_interaction_orm import UserInteractionORM  # noqa: F401
 from app.domains.market_analysis.adapter.inbound.api.market_analysis_router import router as market_analysis_router
+from app.domains.investment.adapter.inbound.api.investment_router import router as investment_router
+from app.domains.investment.infrastructure.orm.investment_youtube_log_orm import InvestmentYouTubeLogORM  # noqa: F401
+from app.domains.investment.infrastructure.orm.investment_youtube_video_orm import InvestmentYouTubeVideoORM  # noqa: F401
+from app.domains.investment.infrastructure.orm.investment_youtube_comment_orm import InvestmentYouTubeCommentORM  # noqa: F401
 from app.infrastructure.config.settings import Settings, get_settings
 from app.infrastructure.database.session import Base, engine
 from app.infrastructure.database.pg_session import PgBase, pg_engine, check_pg_health
@@ -181,6 +185,7 @@ app.include_router(noun_extraction_router)
 app.include_router(market_video_router)
 app.include_router(stock_theme_router)
 app.include_router(market_analysis_router)
+app.include_router(investment_router)
 
 
 @app.get("/")
