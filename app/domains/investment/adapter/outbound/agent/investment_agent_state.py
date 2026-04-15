@@ -25,8 +25,11 @@ class InvestmentAgentState(TypedDict):
     """
 
     query: str
-    parsed_query: Optional[dict]   # ParsedQuery: company / intent / required_data
+    parsed_query: Optional[dict]        # ParsedQuery: company / intent / required_data
     retrieved_data: Optional[str]
+    news_signal: Optional[dict]         # NewsSentimentMetrics
+    youtube_signal: Optional[dict]      # YouTubeSentimentMetrics
+    investment_verdict: Optional[dict]  # InvestmentDecision
     analysis: Optional[str]
     final_answer: Optional[str]
     next_agent: Optional[str]

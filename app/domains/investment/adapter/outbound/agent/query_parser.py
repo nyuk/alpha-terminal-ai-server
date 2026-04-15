@@ -24,13 +24,13 @@ MAX_RETRIES = 2
 # Value → 설명 (프롬프트·로그용)
 # ---------------------------------------------------------------------------
 SOURCE_REGISTRY: dict[str, str] = {
-    "뉴스": "SERP API 구글 뉴스 검색",
-    "YouTube 영상": "YouTube Data API 채널 영상 검색",
-    "종목": "관심종목 기본 정보 (향후 구현)",
+    "뉴스": "SERP API 구글 뉴스 검색 — 최신 기사·공시·시황",
+    "YouTube 영상": "YouTube Data API 채널 영상 검색 — 증권 채널 영상 및 댓글",
+    "종목": "관심종목 기본 정보 — 시세·재무 요약 (향후 구현)",
 }
 
-# fallback: 파싱 실패 또는 유효 키가 없을 때 기본 수집 소스
-DEFAULT_SOURCES: List[str] = ["뉴스", "YouTube 영상"]
+# fallback: 파싱 실패 또는 유효 키가 없을 때 기본 수집 소스 (전체 소스)
+DEFAULT_SOURCES: List[str] = ["뉴스", "YouTube 영상", "종목"]
 
 _VALID_KEYS = set(SOURCE_REGISTRY.keys())
 
@@ -47,6 +47,10 @@ class QueryParseError(Exception):
     """Query Parser 실패 예외 — 형식 오류 또는 의미 없는 입력."""
 
 
+_SOURCE_DESC = "\n".join(
+    f'   - "{k}": {v}' for k, v in SOURCE_REGISTRY.items()
+)
+
 _SYSTEM = f"""당신은 투자 질문 분석기입니다.
 사용자의 자연어 투자 질문에서 다음 세 가지를 추출하여 반드시 JSON 형식으로만 응답하세요.
 
@@ -57,7 +61,13 @@ _SYSTEM = f"""당신은 투자 질문 분석기입니다.
                    예: "매수 타이밍 판단", "리스크 분석", "전망 조회", "섹터 전반 분석"
 3. required_data : 질문에 답하기 위해 필요한 데이터 유형 목록 (배열).
                    반드시 아래 목록에서만 선택하세요 (여러 개 선택 가능):
-                   {json.dumps(list(SOURCE_REGISTRY.keys()), ensure_ascii=False)}
+{_SOURCE_DESC}
+
+   선택 기준:
+   - 최신 뉴스·공시·시황이 필요하면 → "뉴스" 포함
+   - 유튜브 증권 채널 해설·전문가 의견이 필요하면 → "YouTube 영상" 포함
+   - 종목 시세·재무 정보가 필요하면 → "종목" 포함
+   - 불확실하면 세 가지 모두 포함
 
 응답 형식 (JSON만, 다른 텍스트 없이):
 {{
@@ -69,10 +79,14 @@ _SYSTEM = f"""당신은 투자 질문 분석기입니다.
 예시:
 - "한화에어로스페이스 지금 사도 될까?" →
   {{"company": "한화에어로스페이스", "intent": "매수 타이밍 판단", "required_data": ["뉴스", "YouTube 영상", "종목"]}}
-- "방산주 전반 전망 알려줘" →
-  {{"company": null, "intent": "섹터 전반 분석", "required_data": ["뉴스", "YouTube 영상"]}}
+- "방산주 전반 뉴스 알려줘" →
+  {{"company": null, "intent": "섹터 뉴스 조회", "required_data": ["뉴스"]}}
+- "삼성전자 유튜브 반응은?" →
+  {{"company": "삼성전자", "intent": "유튜브 여론 조회", "required_data": ["YouTube 영상"]}}
 - "삼성전자 리스크 분석해줘" →
   {{"company": "삼성전자", "intent": "리스크 분석", "required_data": ["뉴스", "YouTube 영상", "종목"]}}
+- "방산주 전반 전망 알려줘" →
+  {{"company": null, "intent": "섹터 전반 분석", "required_data": ["뉴스", "YouTube 영상", "종목"]}}
 
 주의:
 - JSON 외 다른 텍스트를 포함하지 마세요.

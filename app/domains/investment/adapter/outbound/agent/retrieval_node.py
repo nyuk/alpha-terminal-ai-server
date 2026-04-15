@@ -27,36 +27,20 @@ from app.infrastructure.config.settings import get_settings
 
 HANDLER_TIMEOUT = 30  # 소스별 최대 실행 시간 (초)
 
+SourceResult = tuple[str, Optional[dict]]   # (retrieval_text, signal_dict)
+SourceFactory = Callable[[str, str, Optional[str]], Coroutine[Any, Any, SourceResult]]
+
 
 # ---------------------------------------------------------------------------
 # 개별 소스 핸들러 (async, 실패 시 에러 문자열 반환)
 # ---------------------------------------------------------------------------
 
-async def _handle_news(keyword: str) -> str:
-    """[Retrieval][뉴스] SERP API 뉴스 수집."""
-    from app.domains.news_search.adapter.outbound.external.serp_news_search_adapter import SerpNewsSearchAdapter
-    try:
-        await aemit(f"[Retrieval][뉴스] ▶ SERP API 호출 | keyword={keyword}")
-        loop = asyncio.get_event_loop()
-        adapter = SerpNewsSearchAdapter(hl="ko", gl="kr")
-        # SerpClient.get 은 동기 — event loop 블로킹 방지를 위해 executor 사용
-        articles, total = await loop.run_in_executor(
-            None, lambda: adapter.search(keyword=keyword, page=1, page_size=5)
-        )
-        if not articles:
-            await aemit(f"[Retrieval][뉴스] 결과 없음")
-            return ""
-        lines = [f"=== 뉴스 ({total}건 중 {len(articles)}건 수집) ==="]
-        for a in articles:
-            lines.append(f"- [{a.source}] {a.title} ({a.published_at})")
-            if a.snippet:
-                lines.append(f"  {a.snippet}")
-        await aemit(f"[Retrieval][뉴스] ◀ {len(articles)}건 수집 완료")
-        return "\n".join(lines)
-    except Exception:
-        await aemit(f"[Retrieval][뉴스] ✗ 실패")
-        traceback.print_exc()
-        return "=== 뉴스 수집 실패 ==="
+async def _handle_news(keyword: str, company: Optional[str] = None) -> SourceResult:
+    """[Retrieval][뉴스] SERP API 뉴스 검색 + ArticleContentFetcher 본문 수집 + DB 저장."""
+    from app.domains.news_search.adapter.outbound.external.investment_news_source import (
+        fetch_and_store_investment_news,
+    )
+    return await fetch_and_store_investment_news(keyword=keyword, company=company)
 
 
 async def _handle_youtube(keyword: str, query: str, company: Optional[str]) -> str:
@@ -73,7 +57,7 @@ async def _handle_youtube(keyword: str, query: str, company: Optional[str]) -> s
         if not videos:
             await aemit(f"[Retrieval][YouTube] 결과 없음")
             save_youtube_collection(query=query, company=company, videos=[], comments_by_video={})
-            return ""
+            return "", None
 
         await aemit(f"[Retrieval][YouTube] ◀ {len(videos)}건 수집 → 댓글 수집 시작")
         comments_by_video: dict = {}
@@ -103,17 +87,37 @@ async def _handle_youtube(keyword: str, query: str, company: Optional[str]) -> s
             lines.append(f"  {v.video_url}")
         total_comments = sum(len(c) for c in comments_by_video.values())
         await aemit(f"[Retrieval][YouTube] ◀ 완료 | {len(videos)}건 영상 / {total_comments}건 댓글")
-        return "\n".join(lines)
+
+        # YouTube 투자 심리 지표 산출
+        youtube_metrics: dict = {}
+        try:
+            from app.domains.investment.adapter.outbound.agent.sentiment_analyzer import analyze_youtube_comments
+            await aemit(f"[Retrieval][YouTube] → 투자 심리 지표 산출 시작")
+            all_texts = [c.text for cs in comments_by_video.values() for c in cs]
+            youtube_metrics = await analyze_youtube_comments(all_texts, company)
+            sd = youtube_metrics["sentiment_distribution"]
+            lines.append(f"\n=== YouTube 투자 심리 지표 ===")
+            lines.append(f"감성 분포: 긍정 {sd['positive']:.0%} / 중립 {sd['neutral']:.0%} / 부정 {sd['negative']:.0%}")
+            lines.append(f"감성 점수: {youtube_metrics['sentiment_score']:+.2f}")
+            lines.append(f"상승 키워드: {', '.join(youtube_metrics['bullish_keywords'])}")
+            lines.append(f"하락 키워드: {', '.join(youtube_metrics['bearish_keywords'])}")
+            lines.append(f"주요 토픽: {', '.join(youtube_metrics['topics'])}")
+            lines.append(f"분석 댓글 수: {youtube_metrics['volume']}건")
+        except Exception:
+            await aemit(f"[Retrieval][YouTube] ✗ 심리 지표 산출 실패 (영상 수집 결과는 유지)")
+            traceback.print_exc()
+
+        return "\n".join(lines), youtube_metrics or None
     except Exception:
         await aemit(f"[Retrieval][YouTube] ✗ 수집 실패")
         traceback.print_exc()
-        return "=== YouTube 수집 실패 ==="
+        return "=== YouTube 수집 실패 ===", None
 
 
-async def _handle_stock(keyword: str) -> str:
+async def _handle_stock(keyword: str) -> SourceResult:
     """[Retrieval][종목] 종목 기본 정보 수집 (향후 구현)."""
     await aemit(f"[Retrieval][종목] 향후 구현 예정 | keyword={keyword}")
-    return "=== 종목 기본 정보: 향후 구현 예정 ==="
+    return "=== 종목 기본 정보: 향후 구현 예정 ===", None
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +126,8 @@ async def _handle_stock(keyword: str) -> str:
 # 새 소스 추가: 핸들러 함수 작성 후 아래에 한 줄만 추가하면 자동 병렬화 적용.
 # ---------------------------------------------------------------------------
 
-SourceFactory = Callable[[str, str, Optional[str]], Coroutine[Any, Any, str]]
-
 SOURCE_REGISTRY: dict[str, SourceFactory] = {
-    "뉴스":         lambda kw, q, c: _handle_news(kw),
+    "뉴스":         lambda kw, q, c: _handle_news(kw, c),
     "YouTube 영상": lambda kw, q, c: _handle_youtube(kw, q, c),
     "종목":         lambda kw, q, c: _handle_stock(kw),
 }
@@ -139,25 +141,25 @@ async def _run_with_timeout(
     source_key: str,
     coro: Coroutine,
     timeout: float,
-) -> str:
+) -> SourceResult:
     """단일 소스 핸들러를 타임아웃과 함께 실행한다.
 
-    타임아웃 또는 예외 발생 시 실패 메시지 문자열을 반환 (예외를 전파하지 않음).
+    타임아웃 또는 예외 발생 시 실패 메시지를 반환 (예외를 전파하지 않음).
     """
     try:
         return await asyncio.wait_for(coro, timeout=timeout)
     except asyncio.TimeoutError:
         await aemit(f"[Retrieval][{source_key}] ✗ 타임아웃 ({timeout}s 초과)")
-        return f"=== {source_key} 수집 타임아웃 ({timeout}s) ==="
+        return f"=== {source_key} 수집 타임아웃 ({timeout}s) ===", None
     except Exception:
         await aemit(f"[Retrieval][{source_key}] ✗ 예외 발생")
         traceback.print_exc()
-        return f"=== {source_key} 수집 실패 ==="
+        return f"=== {source_key} 수집 실패 ===", None
 
 
-def _merge_results(keys_in_order: List[str], results: List[str]) -> str:
+def _merge_results(keys_in_order: List[str], texts: List[str]) -> str:
     """required_data 순서대로 수집 결과를 병합한다."""
-    sections = [r for r in results if r]
+    sections = [r for r in texts if r]
     return "\n\n".join(sections) if sections else "수집된 데이터 없음"
 
 
@@ -195,7 +197,7 @@ async def retrieval_node(state: InvestmentAgentState) -> dict:
     await aemit(f"[Retrieval] ⚡ {len(active_keys)}개 소스 병렬 실행 (timeout={HANDLER_TIMEOUT}s)")
     t_start = time.perf_counter()
 
-    results: List[str] = await asyncio.gather(
+    raw_results: List[SourceResult] = await asyncio.gather(
         *[_run_with_timeout(key, coro, HANDLER_TIMEOUT)
           for key, coro in zip(active_keys, coroutines)]
     )
@@ -203,13 +205,23 @@ async def retrieval_node(state: InvestmentAgentState) -> dict:
     elapsed = time.perf_counter() - t_start
     await aemit(f"[Retrieval] ⚡ 병렬 실행 완료 | 소요={elapsed:.1f}s")
 
+    # 텍스트·신호 분리
+    texts: List[str] = [r[0] for r in raw_results]
+    signals: dict[str, Optional[dict]] = {
+        key: r[1] for key, r in zip(active_keys, raw_results)
+    }
+
     # 개별 소스 결과 로그
-    for key, result in zip(active_keys, results):
-        status = "✓" if result and "실패" not in result and "타임아웃" not in result else "✗"
-        await aemit(f"[Retrieval]   {status} [{key}] {len(result)}자")
+    for key, text in zip(active_keys, texts):
+        status = "✓" if text and "실패" not in text and "타임아웃" not in text else "✗"
+        await aemit(f"[Retrieval]   {status} [{key}] {len(text)}자")
 
     # required_data 순서대로 병합
-    retrieved_data = _merge_results(active_keys, list(results))
+    retrieved_data = _merge_results(active_keys, texts)
     await aemit(f"[Retrieval] ◀ 완료 | 총 {len(retrieved_data)}자")
 
-    return {"retrieved_data": retrieved_data}
+    return {
+        "retrieved_data": retrieved_data,
+        "news_signal": signals.get("뉴스"),
+        "youtube_signal": signals.get("YouTube 영상"),
+    }
