@@ -44,7 +44,8 @@
       "Bash(docker ps:*)",
       "Bash(PYTHONPATH=. venv/Scripts/python -c \"from app.domains.board.adapter.inbound.api.board_router import router; from app.domains.board.infrastructure.orm.board_orm import BoardORM; print\\(''OK''\\)\")",
       "Bash(1:*)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

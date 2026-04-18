@@ -41,6 +41,8 @@ class UserInteractionMapper:
             interaction_type=orm.interaction_type,
             count=orm.count,
             content=orm.content,
+            name=orm.name,
+            market=orm.market,
             created_at=orm.created_at or datetime.now(),
         )
 
@@ -52,4 +54,6 @@ class UserInteractionMapper:
             interaction_type=entity.interaction_type,
             count=entity.count,
             content=entity.content,
+            name=entity.name,
+            market=entity.market,
         )

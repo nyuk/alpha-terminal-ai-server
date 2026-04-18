@@ -1,9 +1,10 @@
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.domains.user_profile.application.port.user_profile_repository_port import UserProfileRepositoryPort
-from app.domains.user_profile.domain.entity.user_interaction import UserInteraction
+from app.domains.user_profile.domain.entity.user_interaction import UserInteraction, InteractionType
 from app.domains.user_profile.domain.entity.user_profile import UserProfile
 from app.domains.user_profile.infrastructure.mapper.user_profile_mapper import UserInteractionMapper, UserProfileMapper
 from app.domains.user_profile.infrastructure.orm.user_interaction_orm import UserInteractionORM
@@ -53,3 +54,35 @@ class UserProfileRepositoryImpl(UserProfileRepositoryPort):
         self._db.commit()
         self._db.refresh(orm)
         return UserInteractionMapper.to_entity(orm)
+
+    def upsert_recently_viewed(self, interaction: UserInteraction) -> UserInteraction:
+        existing = self._db.query(UserInteractionORM).filter(
+            UserInteractionORM.account_id == interaction.account_id,
+            UserInteractionORM.symbol == interaction.symbol,
+            UserInteractionORM.interaction_type == InteractionType.CLICK,
+        ).first()
+
+        if existing:
+            existing.name = interaction.name
+            existing.market = interaction.market
+            existing.created_at = datetime.now()
+            self._db.commit()
+            self._db.refresh(existing)
+            return UserInteractionMapper.to_entity(existing)
+
+        orm = UserInteractionMapper.to_orm(interaction)
+        self._db.add(orm)
+        self._db.commit()
+        self._db.refresh(orm)
+        return UserInteractionMapper.to_entity(orm)
+
+    def enforce_max_recently_viewed(self, account_id: int, max_count: int) -> None:
+        records = self._db.query(UserInteractionORM).filter(
+            UserInteractionORM.account_id == account_id,
+            UserInteractionORM.interaction_type == InteractionType.CLICK,
+        ).order_by(UserInteractionORM.created_at.desc()).all()
+
+        if len(records) > max_count:
+            for record in records[max_count:]:
+                self._db.delete(record)
+            self._db.commit()

@@ -22,6 +22,15 @@ class WatchlistSummaryItem(BaseModel):
 
 class RecentlyViewedItem(BaseModel):
     symbol: str
+    name: Optional[str] = None
+    market: Optional[str] = None
+    viewed_at: datetime
+
+
+class SaveRecentlyViewedResponse(BaseModel):
+    symbol: str
+    name: str
+    market: Optional[str] = None
     viewed_at: datetime
 
 

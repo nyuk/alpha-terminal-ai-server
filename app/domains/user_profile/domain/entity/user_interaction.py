@@ -16,5 +16,7 @@ class UserInteraction:
     interaction_type: str
     count: int = 0
     content: Optional[str] = None
+    name: Optional[str] = None
+    market: Optional[str] = None
     created_at: datetime = None
     id: Optional[int] = None

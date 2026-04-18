@@ -43,6 +43,8 @@ class GetUserProfileUseCase:
                 if interaction.symbol not in seen_click_symbols:
                     recently_viewed.append(RecentlyViewedItem(
                         symbol=interaction.symbol,
+                        name=interaction.name,
+                        market=interaction.market,
                         viewed_at=interaction.created_at,
                     ))
                     seen_click_symbols.add(interaction.symbol)

@@ -14,4 +14,6 @@ class UserInteractionORM(Base):
     interaction_type = Column(String(20), nullable=False)   # like / comment / click
     count = Column(Integer, nullable=False, default=0)
     content = Column(Text, nullable=True)
+    name = Column(String(100), nullable=True)
+    market = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=datetime.now)

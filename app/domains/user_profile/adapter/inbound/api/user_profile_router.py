@@ -7,8 +7,10 @@ from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import Re
 from app.domains.user_profile.adapter.outbound.persistence.user_profile_repository_impl import (
     UserProfileRepositoryImpl,
 )
-from app.domains.user_profile.application.response.user_profile_response import UserProfileResponse
+from app.domains.user_profile.application.request.save_recently_viewed_request import SaveRecentlyViewedRequest
+from app.domains.user_profile.application.response.user_profile_response import UserProfileResponse, SaveRecentlyViewedResponse
 from app.domains.user_profile.application.usecase.get_user_profile_usecase import GetUserProfileUseCase
+from app.domains.user_profile.application.usecase.save_recently_viewed_usecase import SaveRecentlyViewedUseCase
 from app.domains.watchlist.adapter.outbound.persistence.watchlist_repository_impl import WatchlistRepositoryImpl
 from app.infrastructure.cache.redis_client import redis_client
 from app.infrastructure.database.session import get_db
@@ -57,3 +59,22 @@ async def get_user_profile(
         watchlist_port=watchlist_repo,
     )
     return usecase.execute(account_id=user_id)
+
+
+@router.post("/{user_id}/recently-viewed", response_model=SaveRecentlyViewedResponse)
+async def save_recently_viewed(
+    user_id: int,
+    request: SaveRecentlyViewedRequest,
+    db: Session = Depends(get_db),
+    account_id: Optional[str] = Cookie(default=None),
+    user_token: Optional[str] = Cookie(default=None),
+):
+    requester_id = _resolve_account_id(account_id, user_token)
+    if requester_id is None:
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+    if requester_id != user_id:
+        raise HTTPException(status_code=403, detail="본인 이력만 저장할 수 있습니다.")
+
+    repo = UserProfileRepositoryImpl(db)
+    usecase = SaveRecentlyViewedUseCase(repository=repo)
+    return usecase.execute(account_id=user_id, request=request)
