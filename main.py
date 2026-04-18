@@ -157,6 +157,23 @@ def _run_column_migrations():
             except Exception as e:
                 logger.warning(f"[migration] saved_articles unique constraint 추가 실패: {e}")
 
+        # user_interactions — name, market (BL-BE-62)
+        if not _column_exists(conn, "user_interactions", "name"):
+            try:
+                conn.execute(text("ALTER TABLE user_interactions ADD COLUMN name VARCHAR(100)"))
+                conn.commit()
+                logger.info("[migration] user_interactions.name 추가 완료")
+            except Exception as e:
+                logger.warning(f"[migration] user_interactions.name 추가 실패: {e}")
+
+        if not _column_exists(conn, "user_interactions", "market"):
+            try:
+                conn.execute(text("ALTER TABLE user_interactions ADD COLUMN market VARCHAR(20)"))
+                conn.commit()
+                logger.info("[migration] user_interactions.market 추가 완료")
+            except Exception as e:
+                logger.warning(f"[migration] user_interactions.market 추가 실패: {e}")
+
 
 _run_column_migrations()
 
