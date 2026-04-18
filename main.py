@@ -49,6 +49,8 @@ from app.domains.user_profile.infrastructure.orm.user_interaction_orm import Use
 from app.domains.market_analysis.adapter.inbound.api.market_analysis_router import router as market_analysis_router
 from app.domains.investment.adapter.inbound.api.investment_router import router as investment_router
 from app.domains.admin.adapter.inbound.api.admin_router import router as admin_router
+from app.domains.notification.adapter.inbound.api.notification_router import router as notification_router
+from app.domains.notification.infrastructure.orm.notification_orm import NotificationORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_log_orm import InvestmentYouTubeLogORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_video_orm import InvestmentYouTubeVideoORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_comment_orm import InvestmentYouTubeCommentORM  # noqa: F401
@@ -201,6 +203,7 @@ app.include_router(stock_theme_router)
 app.include_router(market_analysis_router)
 app.include_router(investment_router)
 app.include_router(admin_router)
+app.include_router(notification_router)
 
 
 @app.get("/")
