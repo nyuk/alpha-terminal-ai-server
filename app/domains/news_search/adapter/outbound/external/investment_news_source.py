@@ -36,9 +36,10 @@ def _save_to_db(articles_data: list) -> dict:
 
     mysql_db = SessionLocal()
     pg_db = PgSessionLocal()
+    success_count = 0
     try:
         for data in articles_data:
-            # --- MySQL: 뉴스 메타데이터 ---
+            # 기사 단위 트랜잭션 — 실패 시 해당 건만 rollback하고 다음 건 계속 진행
             try:
                 link_hash = sha256(data["link"].encode()).hexdigest()
                 existing = (
@@ -85,14 +86,20 @@ def _save_to_db(articles_data: list) -> dict:
                         print(f"[InvestmentNews][PG] ✗ 본문 저장 실패: article_id={article_id}")
                         traceback.print_exc()
 
+                # 기사 단위 commit — flush 실패 시 이 줄에 도달하지 않음
+                mysql_db.commit()
+                pg_db.commit()
+                success_count += 1
+
             except Exception:
+                # 이 건만 rollback — 세션을 깨끗하게 초기화하여 다음 건 처리 가능
+                mysql_db.rollback()
+                pg_db.rollback()
                 print(f"[InvestmentNews][MySQL] ✗ 저장 실패: {data.get('title', '')[:40]}")
                 traceback.print_exc()
 
-        mysql_db.commit()
-        pg_db.commit()
-        print(f"[InvestmentNews] DB commit 완료 | {len(articles_data)}건")
-        return {"success": True, "count": len(articles_data), "error": None}
+        print(f"[InvestmentNews] DB commit 완료 | {success_count}/{len(articles_data)}건")
+        return {"success": True, "count": success_count, "error": None}
 
     except Exception as e:
         mysql_db.rollback()

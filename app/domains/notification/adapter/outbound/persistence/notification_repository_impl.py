@@ -13,11 +13,15 @@ class NotificationRepositoryImpl(NotificationRepositoryPort):
         self._db = db
 
     def save(self, notification: Notification) -> Notification:
-        orm = NotificationMapper.to_orm(notification)
-        self._db.add(orm)
-        self._db.commit()
-        self._db.refresh(orm)
-        return NotificationMapper.to_entity(orm)
+        try:
+            orm = NotificationMapper.to_orm(notification)
+            self._db.add(orm)
+            self._db.commit()
+            self._db.refresh(orm)
+            return NotificationMapper.to_entity(orm)
+        except Exception:
+            self._db.rollback()
+            raise
 
     def find_all_by_user_id(self, user_id: int) -> List[Notification]:
         orms = (
@@ -35,21 +39,29 @@ class NotificationRepositoryImpl(NotificationRepositoryPort):
         return NotificationMapper.to_entity(orm)
 
     def mark_read(self, notification_id: int) -> bool:
-        orm = self._db.query(NotificationORM).filter(NotificationORM.id == notification_id).first()
-        if orm is None:
-            return False
-        orm.is_read = True
-        self._db.commit()
-        return True
+        try:
+            orm = self._db.query(NotificationORM).filter(NotificationORM.id == notification_id).first()
+            if orm is None:
+                return False
+            orm.is_read = True
+            self._db.commit()
+            return True
+        except Exception:
+            self._db.rollback()
+            raise
 
     def mark_all_read(self, user_id: int) -> int:
-        count = (
-            self._db.query(NotificationORM)
-            .filter(NotificationORM.user_id == user_id, NotificationORM.is_read == False)
-            .update({"is_read": True})
-        )
-        self._db.commit()
-        return count
+        try:
+            count = (
+                self._db.query(NotificationORM)
+                .filter(NotificationORM.user_id == user_id, NotificationORM.is_read == False)
+                .update({"is_read": True})
+            )
+            self._db.commit()
+            return count
+        except Exception:
+            self._db.rollback()
+            raise
 
     def count_unread(self, user_id: int) -> int:
         return (

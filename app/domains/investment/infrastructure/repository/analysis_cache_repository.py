@@ -24,15 +24,19 @@ class AnalysisCacheRepository:
         )
 
     def save(self, symbol: str, query: str, answer: str) -> AnalysisCacheORM:
-        now = datetime.now()
-        orm = AnalysisCacheORM(
-            symbol=symbol,
-            query=query,
-            answer=answer,
-            created_at=now,
-            expires_at=now + timedelta(hours=CACHE_TTL_HOURS),
-        )
-        self._db.add(orm)
-        self._db.commit()
-        self._db.refresh(orm)
-        return orm
+        try:
+            now = datetime.now()
+            orm = AnalysisCacheORM(
+                symbol=symbol,
+                query=query,
+                answer=answer,
+                created_at=now,
+                expires_at=now + timedelta(hours=CACHE_TTL_HOURS),
+            )
+            self._db.add(orm)
+            self._db.commit()
+            self._db.refresh(orm)
+            return orm
+        except Exception:
+            self._db.rollback()
+            raise

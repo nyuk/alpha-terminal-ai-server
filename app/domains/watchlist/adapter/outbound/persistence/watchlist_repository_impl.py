@@ -13,11 +13,15 @@ class WatchlistRepositoryImpl(WatchlistRepositoryPort):
         self._db = db
 
     def save(self, item: WatchlistItem) -> WatchlistItem:
-        orm = WatchlistItemMapper.to_orm(item)
-        self._db.add(orm)
-        self._db.commit()
-        self._db.refresh(orm)
-        return WatchlistItemMapper.to_entity(orm)
+        try:
+            orm = WatchlistItemMapper.to_orm(item)
+            self._db.add(orm)
+            self._db.commit()
+            self._db.refresh(orm)
+            return WatchlistItemMapper.to_entity(orm)
+        except Exception:
+            self._db.rollback()
+            raise
 
     def find_by_symbol(self, symbol: str, account_id: Optional[int] = None) -> Optional[WatchlistItem]:
         query = self._db.query(WatchlistItemORM).filter(WatchlistItemORM.symbol == symbol)
@@ -36,9 +40,13 @@ class WatchlistRepositoryImpl(WatchlistRepositoryPort):
         return [WatchlistItemMapper.to_entity(orm) for orm in orms]
 
     def delete_by_id(self, item_id: int) -> bool:
-        orm = self._db.query(WatchlistItemORM).filter(WatchlistItemORM.id == item_id).first()
-        if orm is None:
-            return False
-        self._db.delete(orm)
-        self._db.commit()
-        return True
+        try:
+            orm = self._db.query(WatchlistItemORM).filter(WatchlistItemORM.id == item_id).first()
+            if orm is None:
+                return False
+            self._db.delete(orm)
+            self._db.commit()
+            return True
+        except Exception:
+            self._db.rollback()
+            raise

@@ -120,15 +120,18 @@ async def run_pipeline_stream(
             await queue.put(event)
 
         async def run():
+            # 클라이언트 연결 해제 시에도 세션이 살아있도록 독립 세션 사용
+            from app.infrastructure.database.session import SessionLocal
+            local_db = SessionLocal()
             try:
-                result = await _build_usecase(db).execute(
+                result = await _build_usecase(local_db).execute(
                     selected_symbols=selected_symbols,
                     account_id=parsed_account_id,
                     on_event=on_event,
                     article_mode=article_mode,
                 )
                 get_summary_registry().put_all(parsed_account_id, result.summaries)
-                log_repo = AnalysisLogRepositoryImpl(db)
+                log_repo = AnalysisLogRepositoryImpl(local_db)
                 log_repo.save_all(result.logs, account_id=parsed_account_id)
                 await queue.put({
                     "type": "done",
@@ -139,6 +142,7 @@ async def run_pipeline_stream(
             except Exception as e:
                 await queue.put({"type": "error", "at": datetime.now(timezone.utc).isoformat(), "message": str(e)})
             finally:
+                local_db.close()
                 await queue.put(None)
 
         task = asyncio.create_task(run())
@@ -213,6 +217,7 @@ async def run_pipeline_job():
         log_repo.save_all(result.logs, account_id=None)
         logger.info(f"[Scheduler] 파이프라인 완료: {result.message} / processed={len(result.processed)}")
     except Exception as e:
+        db.rollback()
         logger.error(f"[Scheduler] 파이프라인 실행 실패: {e}")
     finally:
         db.close()

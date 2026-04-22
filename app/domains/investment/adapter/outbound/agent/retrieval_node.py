@@ -152,7 +152,12 @@ async def _handle_dashboard_analysis(keyword: str, company: Optional[str] = None
         finally:
             db.close()
 
-    logs, stock_name = await loop.run_in_executor(None, _query_logs)
+    try:
+        logs, stock_name = await loop.run_in_executor(None, _query_logs)
+    except Exception:
+        await aemit(f"[Retrieval][대시보드 분석] ✗ DB 조회 실패")
+        traceback.print_exc()
+        return "", None
 
     if logs is None:
         await aemit(f"[Retrieval][대시보드 분석] ⚠ 종목 미등록: {search_name}")

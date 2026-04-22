@@ -25,11 +25,15 @@ class CardShareRepositoryImpl:
     # ── Shared Cards ──────────────────────────────────────────────────────────
 
     def save(self, card: SharedCard) -> SharedCard:
-        orm = shared_card_to_orm(card)
-        self._db.add(orm)
-        self._db.commit()
-        self._db.refresh(orm)
-        return orm_to_shared_card(orm)
+        try:
+            orm = shared_card_to_orm(card)
+            self._db.add(orm)
+            self._db.commit()
+            self._db.refresh(orm)
+            return orm_to_shared_card(orm)
+        except Exception:
+            self._db.rollback()
+            raise
 
     def find_by_id(self, card_id: int) -> Optional[SharedCard]:
         orm = self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).first()
@@ -47,12 +51,16 @@ class CardShareRepositoryImpl:
         return [orm_to_shared_card(o) for o in orms], total
 
     def delete(self, card_id: int) -> bool:
-        orm = self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).first()
-        if not orm:
-            return False
-        self._db.delete(orm)
-        self._db.commit()
-        return True
+        try:
+            orm = self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).first()
+            if not orm:
+                return False
+            self._db.delete(orm)
+            self._db.commit()
+            return True
+        except Exception:
+            self._db.rollback()
+            raise
 
     # ── Likes ─────────────────────────────────────────────────────────────────
 
@@ -98,12 +106,16 @@ class CardShareRepositoryImpl:
             ).first()
         if not orm:
             return False
-        self._db.delete(orm)
-        self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).update(
-            {"like_count": func.greatest(SharedCardORM.like_count - 1, 0)}
-        )
-        self._db.commit()
-        return True
+        try:
+            self._db.delete(orm)
+            self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).update(
+                {"like_count": func.greatest(SharedCardORM.like_count - 1, 0)}
+            )
+            self._db.commit()
+            return True
+        except Exception:
+            self._db.rollback()
+            raise
 
     def get_like_count(self, card_id: int) -> int:
         orm = self._db.query(SharedCardORM).filter(SharedCardORM.id == card_id).first()
@@ -130,20 +142,24 @@ class CardShareRepositoryImpl:
     # ── Comments ──────────────────────────────────────────────────────────────
 
     def add_comment(self, comment: CardComment) -> CardComment:
-        orm = CardCommentORM(
-            shared_card_id=comment.shared_card_id,
-            content=comment.content,
-            author_nickname=comment.author_nickname,
-            author_account_id=comment.author_account_id,
-            author_ip=comment.author_ip,
-        )
-        self._db.add(orm)
-        self._db.query(SharedCardORM).filter(SharedCardORM.id == comment.shared_card_id).update(
-            {"comment_count": SharedCardORM.comment_count + 1}
-        )
-        self._db.commit()
-        self._db.refresh(orm)
-        return orm_to_card_comment(orm)
+        try:
+            orm = CardCommentORM(
+                shared_card_id=comment.shared_card_id,
+                content=comment.content,
+                author_nickname=comment.author_nickname,
+                author_account_id=comment.author_account_id,
+                author_ip=comment.author_ip,
+            )
+            self._db.add(orm)
+            self._db.query(SharedCardORM).filter(SharedCardORM.id == comment.shared_card_id).update(
+                {"comment_count": SharedCardORM.comment_count + 1}
+            )
+            self._db.commit()
+            self._db.refresh(orm)
+            return orm_to_card_comment(orm)
+        except Exception:
+            self._db.rollback()
+            raise
 
     def find_comments(self, card_id: int) -> list[CardComment]:
         orms = (

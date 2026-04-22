@@ -51,9 +51,13 @@ class StockRepositoryImpl(StockRepositoryPort):
             market=stmt.inserted.market,
             corp_code=stmt.inserted.corp_code,
         )
-        self._db.execute(stmt)
-        self._db.commit()
-        return len(rows)
+        try:
+            self._db.execute(stmt)
+            self._db.commit()
+            return len(rows)
+        except Exception:
+            self._db.rollback()
+            raise
 
     def count(self) -> int:
         return self._db.query(StockORM).count()
@@ -67,13 +71,17 @@ class StockRepositoryImpl(StockRepositoryPort):
     def update_market_bulk(self, market_map: Dict[str, str]) -> int:
         if not market_map:
             return 0
-        updated = 0
-        for symbol, market in market_map.items():
-            count = (
-                self._db.query(StockORM)
-                .filter(StockORM.symbol == symbol)
-                .update({"market": market})
-            )
-            updated += count
-        self._db.commit()
-        return updated
+        try:
+            updated = 0
+            for symbol, market in market_map.items():
+                count = (
+                    self._db.query(StockORM)
+                    .filter(StockORM.symbol == symbol)
+                    .update({"market": market})
+                )
+                updated += count
+            self._db.commit()
+            return updated
+        except Exception:
+            self._db.rollback()
+            raise
