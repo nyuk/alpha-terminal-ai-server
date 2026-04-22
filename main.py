@@ -52,6 +52,7 @@ from app.domains.investment.adapter.inbound.api.investment_router import router 
 from app.domains.admin.adapter.inbound.api.admin_router import router as admin_router
 from app.domains.notification.adapter.inbound.api.notification_router import router as notification_router
 from app.domains.notification.infrastructure.orm.notification_orm import NotificationORM  # noqa: F401
+from app.domains.agent_proactive_recommendation.adapter.inbound.api.proactive_recommendation_router import router as proactive_recommendation_router
 from app.domains.investment.infrastructure.orm.investment_youtube_log_orm import InvestmentYouTubeLogORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_video_orm import InvestmentYouTubeVideoORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_comment_orm import InvestmentYouTubeCommentORM  # noqa: F401
@@ -131,6 +132,7 @@ app.include_router(investment_router)
 app.include_router(admin_router)
 app.include_router(notification_router)
 app.include_router(user_profile_router)
+app.include_router(proactive_recommendation_router)
 
 
 @app.get("/")
