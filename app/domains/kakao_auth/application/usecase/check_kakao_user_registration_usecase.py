@@ -44,7 +44,7 @@ class CheckKakaoUserRegistrationUseCase:
             account = self._account_repository.find_by_email(user.email)
 
         if account:
-            user_token = self._session_store.create_session(account.id)
+            user_token = self._session_store.create_session(account.id, account.role)
             self._kakao_token_link.save(account.id, token.access_token)
             return KakaoAccountCheckResponse(
                 is_registered=True,
