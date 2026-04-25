@@ -30,6 +30,7 @@ from app.domains.user_profile.infrastructure.orm.user_profile_orm import UserPro
 from app.domains.watchlist.infrastructure.orm.watchlist_item_orm import WatchlistItemORM  # noqa: F401
 from app.domains.youtube.infrastructure.orm.youtube_comment_orm import YouTubeCommentORM  # noqa: F401
 from app.domains.youtube.infrastructure.orm.youtube_video_orm import YouTubeVideoORM  # noqa: F401
+from app.domains.analytics.infrastructure.orm.event_orm import EventORM  # noqa: F401
 
 config = context.config
 
