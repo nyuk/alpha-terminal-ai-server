@@ -1,19 +1,11 @@
-"""관리자 대시보드 통계 UseCase.
+"""관리자 대시보드 통계 UseCase."""
+from datetime import datetime, timedelta, date
 
-현재 구현 가능한 지표:
-    - total_users       : 전체 가입자 수
-    - new_users_today   : 오늘 가입자 수
-    - new_users_this_week: 이번 주 가입자 수
-    - retention D-1~D-14: 가입 후 N일 뒤 재방문 비율
-                          (활동 로그 테이블 없어 현재 0.0 반환, TODO)
-    - avg_dwell_time    : 평균 체류 시간 (세션 추적 없어 None 반환, TODO)
-    - ctr               : 카드 클릭률 (클릭/노출 추적 없어 None 반환, TODO)
-"""
-from datetime import datetime, timedelta
-
+from sqlalchemy import func, distinct, case
 from sqlalchemy.orm import Session
 
 from app.domains.account.infrastructure.orm.account_orm import AccountORM
+from app.domains.analytics.infrastructure.orm.event_orm import EventORM
 from app.domains.admin.application.response.admin_dashboard_stats_response import (
     AdminDashboardStatsResponse,
     RetentionPoint,
@@ -44,15 +36,61 @@ class GetAdminDashboardStatsUseCase:
             .count()
         )
 
-        # Retention D-1 ~ D-14
-        # TODO: 활동 로그 테이블(user_activity_log) 구축 후 실제 재방문 비율 계산
-        retention = [RetentionPoint(day=d, rate=0.0) for d in range(1, 15)]
+        retention = self._calc_retention()
+        activation_rate = self._calc_activation_rate(total_users)
 
         return AdminDashboardStatsResponse(
             total_users=total_users,
             new_users_today=new_users_today,
             new_users_this_week=new_users_this_week,
             retention=retention,
-            avg_dwell_time_seconds=None,  # TODO: 세션 체류 시간 추적 후 계산
-            ctr=None,                     # TODO: 카드 클릭/노출 추적 후 계산
+            avg_dwell_time_seconds=None,
+            ctr=activation_rate,  # activation_rate을 ctr 필드로 재활용 (FE 레이블은 이승욱님이 수정)
         )
+
+    def _calc_retention(self) -> list[RetentionPoint]:
+        """D-1 ~ D-14 Retention: 가입 D+N일에 app_open 이벤트가 있는 비율."""
+        points: list[RetentionPoint] = []
+        today = date.today()
+
+        for day in range(1, 15):
+            cohort_date = today - timedelta(days=day)
+            cohort_start = datetime.combine(cohort_date, datetime.min.time())
+            cohort_end = cohort_start + timedelta(days=1)
+            target_start = cohort_start + timedelta(days=day)
+            target_end = target_start + timedelta(days=1)
+
+            cohort_ids = (
+                self._db.query(AccountORM.id)
+                .filter(AccountORM.created_at >= cohort_start, AccountORM.created_at < cohort_end)
+                .subquery()
+            )
+            cohort_total = self._db.query(func.count()).select_from(cohort_ids).scalar() or 0
+            if cohort_total == 0:
+                points.append(RetentionPoint(day=day, rate=0.0))
+                continue
+
+            returned = (
+                self._db.query(func.count(distinct(EventORM.account_id)))
+                .filter(
+                    EventORM.account_id.in_(self._db.query(cohort_ids)),
+                    EventORM.event_type == "app_open",
+                    EventORM.occurred_at >= target_start,
+                    EventORM.occurred_at < target_end,
+                )
+                .scalar() or 0
+            )
+            points.append(RetentionPoint(day=day, rate=round(returned / cohort_total, 4)))
+
+        return points
+
+    def _calc_activation_rate(self, total_users: int) -> float | None:
+        """Activation Rate: core_start 이벤트가 있는 계정 / 전체 계정."""
+        if total_users == 0:
+            return None
+        activated = (
+            self._db.query(func.count(distinct(EventORM.account_id)))
+            .filter(EventORM.event_type == "core_start")
+            .scalar() or 0
+        )
+        return round(activated / total_users, 4)
