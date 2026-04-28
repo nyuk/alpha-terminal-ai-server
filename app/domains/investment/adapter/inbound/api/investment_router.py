@@ -2,9 +2,8 @@ import asyncio
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
 from app.domains.investment.adapter.outbound.agent import log_context
@@ -19,9 +18,7 @@ from app.domains.investment.application.response.youtube_sentiment_response impo
 )
 from app.domains.investment.application.usecase.investment_decision_usecase import InvestmentDecisionUseCase
 from app.domains.investment.application.usecase.youtube_sentiment_usecase import YouTubeSentimentUseCase
-from app.domains.investment.infrastructure.repository.analysis_cache_repository import AnalysisCacheRepository
 from app.infrastructure.cache.redis_client import redis_client
-from app.infrastructure.database.pg_session import get_pg_db, PgSessionLocal
 
 router = APIRouter(prefix="/investment", tags=["investment"])
 
@@ -52,12 +49,11 @@ async def investment_decision(
     request: InvestmentDecisionRequest,
     account_id: Optional[str] = Cookie(default=None),
     user_token: Optional[str] = Cookie(default=None),
-    db: Session = Depends(get_pg_db),
 ):
     """인증된 사용자의 투자 판단 질의를 LangGraph 멀티 에이전트로 처리한다.
 
-    force=False(기본)이면 1시간 이내 캐시된 결과를 즉시 반환한다.
-    force=True이면 캐시를 무시하고 파이프라인을 재실행한다.
+    매 호출 시 새로 워크플로우를 실행하여 최신 데이터·관점을 반영한다.
+    (2026-04-28 팀 결정: 동일 질문에 매번 다른 답을 허용하기로 함 — PG 분석 캐시 제거)
     """
     aid = _resolve_account_id(account_id, user_token)
     if aid is None:
@@ -66,60 +62,11 @@ async def investment_decision(
     if not request.symbol:
         raise HTTPException(status_code=422, detail="symbol 필드가 필요합니다.")
 
-    cache_repo = AnalysisCacheRepository(db)
-
-    if not request.force:
-        cached = cache_repo.find_valid(request.symbol)
-        if cached:
-            return InvestmentDecisionResponse(
-                answer=cached.answer,
-                cached=True,
-                cached_at=cached.created_at,
-            )
-
     adapter = LangGraphInvestmentAdapter()
     usecase = InvestmentDecisionUseCase(adapter)
     decision = await usecase.execute(query=request.query)
 
-    cache_repo.save(
-        symbol=request.symbol,
-        query=request.query,
-        answer=decision.answer,
-    )
-
     return InvestmentDecisionResponse(answer=decision.answer)
-
-
-def _lookup_symbol_by_name(company_name: str) -> Optional[str]:
-    """company명으로 종목 symbol을 동기 조회한다."""
-    from app.domains.stock.infrastructure.orm.stock_orm import StockORM
-    from app.infrastructure.database.session import session_scope
-
-    with session_scope() as db:
-        orm = db.query(StockORM).filter(StockORM.name == company_name).first()
-        if not orm:
-            escaped = company_name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            orm = db.query(StockORM).filter(StockORM.name.like(f"%{escaped}%", escape="\\")).first()
-        return orm.symbol if orm else None
-
-
-def _find_cached_answer(symbol: str, query: str, force: bool) -> Optional[str]:
-    """symbol + query 기준 유효 캐시를 동기 조회한다. force=True 이면 None 반환."""
-    if force:
-        return None
-    from app.infrastructure.database.pg_session import pg_session_scope
-
-    with pg_session_scope() as db:
-        cached = AnalysisCacheRepository(db).find_valid(symbol, query)
-        return cached.answer if cached else None
-
-
-def _save_cache(symbol: str, query: str, answer: str) -> None:
-    """분석 결과를 캐시에 동기 저장한다."""
-    from app.infrastructure.database.pg_session import pg_session_scope
-
-    with pg_session_scope() as db:
-        AnalysisCacheRepository(db).save(symbol=symbol, query=query, answer=answer)
 
 
 @router.post("/decision/stream")
@@ -130,10 +77,8 @@ async def investment_decision_stream(
 ):
     """인증된 사용자의 투자 판단 질의를 SSE 스트림으로 처리한다.
 
-    캐시 흐름:
-        1. request.symbol 또는 QueryParser 추출 company명 → symbol 조회
-        2. 유효 캐시(1시간) 존재 시 → 캐시된 결과를 즉시 스트림 반환
-        3. 캐시 없음 → 전체 워크플로우 실행 → 결과 캐시 저장
+    매 호출 시 새로 워크플로우를 실행한다 — 동일 질문에도 매번 새로운 분석을 제공.
+    (2026-04-28 팀 결정: PG 분석 캐시 제거. LangChain LLM 캐시(5분)는 유지.)
 
     이벤트 유형:
         {"type": "log",    "data": "로그 메시지"}
@@ -145,56 +90,10 @@ async def investment_decision_stream(
     if aid is None:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
 
-    # symbol 확정: 요청에 포함된 경우 그대로 사용, 없으면 QueryParser로 추출 후 DB 조회
-    resolved_symbol: Optional[str] = request.symbol
-
-    if not resolved_symbol:
-        try:
-            from app.domains.investment.adapter.outbound.agent.query_parser import parse_investment_query
-            from app.domains.investment.adapter.outbound.agent.log_context import set_log_queue, reset_log_queue
-
-            _pre_q: asyncio.Queue = asyncio.Queue(maxsize=100)
-            _pre_token = set_log_queue(_pre_q)
-            try:
-                parsed = await parse_investment_query(request.query)
-            finally:
-                reset_log_queue(_pre_token)
-
-            company = parsed.get("company")
-            if company:
-                loop = asyncio.get_event_loop()
-                resolved_symbol = await loop.run_in_executor(None, _lookup_symbol_by_name, company)
-        except Exception:
-            resolved_symbol = None
-
-    # 캐시 히트 시 즉시 반환 (PG 미가용 시 캐시 생략하고 워크플로우 실행)
-    cached_answer = None
-    if resolved_symbol and not request.force:
-        try:
-            loop = asyncio.get_event_loop()
-            cached_answer = await loop.run_in_executor(
-                None, _find_cached_answer, resolved_symbol, request.query, request.force
-            )
-        except Exception:
-            pass
-        if cached_answer:
-            async def _cached_generator():
-                yield f"data: {json.dumps({'type': 'log', 'data': f'[Cache] ✓ 캐시된 분석 결과 반환 ({resolved_symbol})'}, ensure_ascii=False)}\n\n"
-                yield f"data: {json.dumps({'type': 'result', 'data': cached_answer}, ensure_ascii=False)}\n\n"
-                yield f"data: {json.dumps({'type': 'end'}, ensure_ascii=False)}\n\n"
-
-            return StreamingResponse(
-                _cached_generator(),
-                media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-            )
-
     q: asyncio.Queue = asyncio.Queue(maxsize=2000)
 
     # 현재 컨텍스트에 큐 등록 → create_task 시 복사됨
     token = log_context.set_log_queue(q)
-
-    _symbol_for_cache = resolved_symbol
 
     async def _run_workflow():
         try:
@@ -202,16 +101,6 @@ async def investment_decision_stream(
             usecase = InvestmentDecisionUseCase(adapter)
             decision = await usecase.execute(query=request.query)
             await q.put({"type": "result", "data": decision.answer})
-
-            # 워크플로우 완료 후 캐시 저장
-            if _symbol_for_cache:
-                try:
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(
-                        None, _save_cache, _symbol_for_cache, request.query, decision.answer
-                    )
-                except Exception:
-                    pass
         except Exception as e:
             await q.put({"type": "error", "data": str(e)})
         finally:
