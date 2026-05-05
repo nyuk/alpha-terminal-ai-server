@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,10 @@ class StockRepositoryImpl(StockRepositoryPort):
     def search_by_name(self, keyword: str, limit: int = 20) -> List[Stock]:
         kw = keyword.strip()
         pattern = f"%{kw}%"
+        prefix_pattern = f"{kw}%"
         pattern_sym = f"%{kw.lower()}%"
+        kw_lower = kw.lower()
+        listed_markets = ("KOSPI", "KOSDAQ", "KONEX", "NASDAQ", "NYSE")
         orms = (
             self._db.query(StockORM)
             .filter(
@@ -26,6 +29,14 @@ class StockRepositoryImpl(StockRepositoryPort):
                     StockORM.name.like(pattern),
                     func.lower(StockORM.symbol).like(pattern_sym),
                 )
+            )
+            .order_by(
+                case((func.lower(StockORM.symbol) == kw_lower, 0), else_=1),
+                case((StockORM.name == kw, 0), else_=1),
+                case((func.upper(StockORM.market).in_(listed_markets), 0), else_=1),
+                case((StockORM.name.like(prefix_pattern), 0), else_=1),
+                StockORM.name.asc(),
+                StockORM.symbol.asc(),
             )
             .limit(limit)
             .all()
