@@ -1,8 +1,27 @@
 from app.domains.account.domain.entity.account import Account
 from app.domains.kakao_auth.application.usecase.check_kakao_account_registration_usecase import CheckKakaoAccountRegistrationUseCase
+from app.domains.kakao_auth.application.usecase.kakao_session_store_port import KakaoSessionStorePort
+from app.domains.kakao_auth.application.usecase.kakao_token_link_port import KakaoTokenLinkPort
 from tests.fakes.fake_account_repository import FakeAccountRepository
 from tests.fakes.fake_kakao_token_adapter import FakeKakaoTokenAdapter
 from tests.fakes.fake_temp_token_store import FakeTempTokenStore
+
+
+class FakeKakaoSessionStore(KakaoSessionStorePort):
+    def __init__(self):
+        self.created_for: list[int] = []
+
+    def create_session(self, account_id: int) -> str:
+        self.created_for.append(account_id)
+        return f"session-{account_id}"
+
+
+class FakeKakaoTokenLink(KakaoTokenLinkPort):
+    def __init__(self):
+        self.saved: dict[int, str] = {}
+
+    def save(self, account_id: int, kakao_access_token: str) -> None:
+        self.saved[account_id] = kakao_access_token
 
 
 def _make_usecase(account=None, email="user@kakao.com", nickname="홍길동", access_token="kakao_access_token_abc"):
@@ -14,6 +33,8 @@ def _make_usecase(account=None, email="user@kakao.com", nickname="홍길동", ac
         user_info_port=token_adapter,
         account_repository=repo,
         temp_token_store=store,
+        session_store=FakeKakaoSessionStore(),
+        kakao_token_link=FakeKakaoTokenLink(),
     )
     return usecase, store
 

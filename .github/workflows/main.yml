@@ -1,9 +1,7 @@
 name: Deploy alpha-terminal-ai-server via Docker
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   typecheck:
