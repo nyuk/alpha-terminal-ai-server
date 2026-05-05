@@ -26,7 +26,7 @@ Fill `.env` with local database credentials and API keys.
 Start infrastructure:
 
 ```powershell
-docker compose up -d mysql redis postgres
+docker compose up -d mysql redis
 ```
 
 Run the API:
@@ -63,6 +63,8 @@ Optional by feature:
 - `FINNHUB_API_KEY`: optional US symbol search and Finnhub news collection.
 - `NAVER_CLIENT_ID`, `NAVER_SECRET`: Naver API features.
 - `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: optional only if Kakao login is re-enabled.
+
+PostgreSQL/pgvector is disabled by default for personal local mode. Set `PG_ENABLED=true` only when you need saved-article body storage or vector features and have a matching PostgreSQL service running.
 
 For a no-key first run, leave external API keys blank and keep these flags disabled:
 

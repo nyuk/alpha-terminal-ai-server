@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     mysql_port: int
     mysql_database: str
     # BL-BE-54: PostgreSQL — 비정형 데이터 저장용
+    pg_enabled: bool = False
     pg_host: str = "postgres"
     pg_port: int = 5432
     pg_user: str = "eddi"

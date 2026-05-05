@@ -6,7 +6,7 @@ This project is configured as a personal stock-watchlist briefing tool. It summa
 
 1. Create your own `.env` from `.env.example`.
 2. Keep external API keys blank until you personally issue them.
-3. Start only MySQL, Redis, and PostgreSQL for the first local boot.
+3. Start only MySQL and Redis for the first local boot.
 4. Enable collectors and schedulers only after the relevant keys are present.
 
 ## Minimum Useful Keys
@@ -47,6 +47,16 @@ PERSONAL_AUTH_NICKNAME=StockBrief User
 ```
 
 Set `PERSONAL_AUTH_ENABLED=false` before exposing the service outside your own local network.
+
+## Local Databases
+
+For the personal MVP, MySQL and Redis are required. PostgreSQL/pgvector is optional and disabled by default:
+
+```env
+PG_ENABLED=false
+```
+
+Turn it on only when you need saved-article body storage or vector features, and make sure `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, and `PG_DATABASE` match the PostgreSQL service you actually run.
 
 ## Local First-Run Policy
 

@@ -100,12 +100,15 @@ async def lifespan(fastapi_app: FastAPI):
 
     # BL-BE-84: PG create_all 을 lifespan startup 으로 이동 (모듈 레벨 실행 제거)
     # TODO: PG Alembic cutover 완료 후 아래 create_all 블록 제거하고 alembic upgrade head 로 대체
-    try:
-        PgBase.metadata.create_all(bind=pg_engine)
-    except Exception as _pg_err:
-        logger.warning("[PostgreSQL] 스키마 초기화 실패 — PG 미가용, 관련 기능 비활성화 (%s)", type(_pg_err).__name__)
+    if settings.pg_enabled:
+        try:
+            PgBase.metadata.create_all(bind=pg_engine)
+        except Exception as _pg_err:
+            logger.warning("[PostgreSQL] 스키마 초기화 실패 — PG 미가용, 관련 기능 비활성화 (%s)", type(_pg_err).__name__)
 
-    check_pg_health()
+        check_pg_health()
+    else:
+        logger.info("[PostgreSQL] disabled for personal local mode")
 
     # 종목 데이터 자동 초기화: stocks 테이블이 비어있으면 DART + KRX sync 실행
     _uv_logger = logging.getLogger("uvicorn")
