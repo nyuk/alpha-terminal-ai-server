@@ -44,24 +44,25 @@ API server: http://localhost:33333
 venv\Scripts\python -m pytest -q
 ```
 
-Current baseline: `19 passed`.
+Current baseline: `14 passed`.
 
 ## API Keys
 
-Start with the minimum set:
+For your current personal setup, use these first:
 
 - `OPENAI_API_KEY`: required for AI summaries and briefing answers.
 - `DART_API_KEY`: required for Korean disclosure and listed-company sync.
-- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: required only if you use Kakao login.
+- `SERP_API_KEY`: Google News/Search collection through SerpApi.
+- `DATA_GO_KR_SERVICE_KEY`: Korean stock price and public-data endpoints.
+- `YOUTUBE_API_KEY`: YouTube video/comment collection.
 
 Optional by feature:
 
-- `SERP_API_KEY`: Google News/Search collection through SerpApi.
-- `FINNHUB_API_KEY`: market data.
-- `TWELVE_DATA_API_KEY`: alternate market data.
-- `YOUTUBE_API_KEY`: YouTube video/comment collection.
-- `DATA_GO_KR_SERVICE_KEY`: Korean public-data endpoints.
+- `ALPHA_VANTAGE_API_KEY`: US daily market data for the heatmap.
+- `TWELVE_DATA_API_KEY`: alternate US market data if you already have it.
+- `FINNHUB_API_KEY`: optional US symbol search and Finnhub news collection.
 - `NAVER_CLIENT_ID`, `NAVER_SECRET`: Naver API features.
+- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: optional only if Kakao login is re-enabled.
 
 For a no-key first run, leave external API keys blank and keep these flags disabled:
 

@@ -15,20 +15,38 @@ This project is configured as a personal stock-watchlist briefing tool. It summa
 | --- | --- | --- |
 | `OPENAI_API_KEY` | AI summaries, risk briefings, Q&A | https://platform.openai.com/api-keys |
 | `DART_API_KEY` | Korean company/disclosure data | https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do |
-| `KAKAO_CLIENT_ID` | Kakao login REST API key | https://developers.kakao.com/ |
-| `KAKAO_CLIENT_SECRET` | Kakao login token exchange when client secret is enabled | https://developers.kakao.com/ |
+| `SERP_API_KEY` | Google News/Search collection | https://serpapi.com/ |
+| `DATA_GO_KR_SERVICE_KEY` | Korean stock prices and public data | https://www.data.go.kr/ |
+| `YOUTUBE_API_KEY` | YouTube Data API video/comment collection | https://console.cloud.google.com/apis/library/youtube.googleapis.com |
 
 ## Optional Keys
 
 | Key | Needed For |
 | --- | --- |
-| `SERP_API_KEY` | SerpApi Google News/Search collection |
-| `FINNHUB_API_KEY` | Market quote and financial data |
-| `TWELVE_DATA_API_KEY` | Alternate market quote and financial data |
-| `YOUTUBE_API_KEY` | YouTube Data API video/comment collection |
-| `DATA_GO_KR_SERVICE_KEY` | Korean public-data portal endpoints |
+| `ALPHA_VANTAGE_API_KEY` | US daily price data for the heatmap |
+| `TWELVE_DATA_API_KEY` | Alternate US price data if you already have a Twelve Data key |
+| `FINNHUB_API_KEY` | Optional US symbol search and Finnhub news collection |
 | `NAVER_CLIENT_ID`, `NAVER_SECRET` | Naver API integrations |
 | `TWITTER_BEARER_TOKEN` | X/Twitter collection if re-enabled |
+| `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` | Kakao OAuth, only if you decide to re-enable Kakao login |
+
+## Personal Login
+
+Kakao login is not required for personal use. The frontend login button calls:
+
+```text
+POST /account/personal-login
+```
+
+The backend creates or reuses one local account and sets the normal auth cookies.
+
+```env
+PERSONAL_AUTH_ENABLED=true
+PERSONAL_AUTH_EMAIL=me@stockbrief.local
+PERSONAL_AUTH_NICKNAME=StockBrief User
+```
+
+Set `PERSONAL_AUTH_ENABLED=false` before exposing the service outside your own local network.
 
 ## Local First-Run Policy
 
@@ -43,23 +61,11 @@ PROACTIVE_BRIEFING_SCHEDULER_ENABLED=false
 
 After issuing `DART_API_KEY`, you can enable `STOCK_AUTO_SYNC_ENABLED=true` or trigger stock sync manually through the stock API. After issuing `OPENAI_API_KEY`, you can use the AI summary and briefing paths. Turn on scheduled collection only after verifying manual collection works.
 
-## Kakao Login Checklist
+## Market Data Plan
 
-For local development, register these values in Kakao Developers:
-
-```text
-Site domain: http://localhost:3000
-Redirect URI: http://localhost:33333/kakao-authentication/request-access-token-after-redirection
-```
-
-Then set:
-
-```env
-KAKAO_CLIENT_ID=<REST API key>
-KAKAO_CLIENT_SECRET=<client secret if enabled>
-KAKAO_REDIRECT_URI=http://localhost:33333/kakao-authentication/request-access-token-after-redirection
-FRONTEND_AUTH_CALLBACK_URL=http://localhost:3000/auth-callback
-```
+- Korean stocks: use `DATA_GO_KR_SERVICE_KEY`. The app already routes KOSPI/KOSDAQ/KONEX daily price heatmap data through data.go.kr.
+- US stocks: use `ALPHA_VANTAGE_API_KEY` first. If it is empty but `TWELVE_DATA_API_KEY` exists, the app falls back to Twelve Data.
+- Keep unofficial no-key sources out of the default path unless you are only doing quick local experiments.
 
 ## Safety Rules
 

@@ -61,6 +61,7 @@ async def daily_returns_heatmap(
         StockRepositoryImpl(db),
         settings.data_go_kr_service_key,
         settings.twelve_data_api_key,
+        settings.alpha_vantage_api_key,
         heatmap_redis_cache_enabled=settings.heatmap_redis_cache_enabled,
     )
     return await asyncio.to_thread(usecase.execute, sym_list, weeks)

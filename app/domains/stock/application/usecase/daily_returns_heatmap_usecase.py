@@ -10,6 +10,9 @@ from typing import Dict, List, Optional, Tuple
 from app.domains.stock.adapter.outbound.external.data_go_kr_daily_price_adapter import (
     fetch_daily_closes_from_data_go_kr,
 )
+from app.domains.stock.adapter.outbound.external.alpha_vantage_daily_price_adapter import (
+    fetch_daily_closes_from_alpha_vantage,
+)
 from app.domains.stock.adapter.outbound.external.twelve_data_daily_price_adapter import (
     fetch_daily_closes_from_twelve_data,
 )
@@ -100,12 +103,14 @@ class DailyReturnsHeatmapUseCase:
         repository: StockRepositoryPort,
         data_go_kr_service_key: str,
         twelve_data_api_key: str,
+        alpha_vantage_api_key: str = "",
         *,
         heatmap_redis_cache_enabled: bool = True,
     ):
         self._repository = repository
         self._data_go_kr_service_key = data_go_kr_service_key or ""
         self._twelve_data_api_key = twelve_data_api_key or ""
+        self._alpha_vantage_api_key = alpha_vantage_api_key or ""
         self._heatmap_redis_cache_enabled = heatmap_redis_cache_enabled
 
     @staticmethod
@@ -131,12 +136,15 @@ class DailyReturnsHeatmapUseCase:
         )
         return "NASDAQ"
 
-    @staticmethod
-    def _provider_for_market(market: str) -> str:
+    def _provider_for_market(self, market: str) -> str:
         if market in _KR_MARKETS:
             return "DATA_GO_KR"
         if market in _US_MARKETS:
-            return "TWELVE_DATA"
+            if self._alpha_vantage_api_key:
+                return "ALPHA_VANTAGE"
+            if self._twelve_data_api_key:
+                return "TWELVE_DATA"
+            return "ALPHA_VANTAGE"
         return "UNSUPPORTED"
 
     def execute(self, symbols: List[str], weeks: int) -> DailyReturnsHeatmapResponse:
@@ -177,6 +185,12 @@ class DailyReturnsHeatmapUseCase:
                         end_date=end_ymd,
                         service_key=self._data_go_kr_service_key,
                         num_rows=max(weeks * 10, 100),
+                    )
+                elif provider == "ALPHA_VANTAGE":
+                    closes, error_code, error_message = fetch_daily_closes_from_alpha_vantage(
+                        symbol=raw_sym,
+                        outputsize=us_outputsize,
+                        api_key=self._alpha_vantage_api_key,
                     )
                 elif provider == "TWELVE_DATA":
                     closes, error_code, error_message = fetch_daily_closes_from_twelve_data(

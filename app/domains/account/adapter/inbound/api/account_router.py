@@ -3,6 +3,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.domains.account.adapter.outbound.in_memory.redis_account_session_adapter import RedisAccountSessionAdapter
@@ -32,6 +33,102 @@ _temp_token_port = RedisTempTokenPortImpl(redis_client)
 _kakao_token_store = RedisKakaoTokenAdapter(redis_client)
 _session_store = RedisAccountSessionAdapter(redis_client)
 
+PERSONAL_KAKAO_ID = "local:stockbrief"
+COOKIE_MAX_AGE = 3600 * 24 * 7
+
+
+def _set_auth_cookies(
+    response: JSONResponse,
+    *,
+    session_token: str,
+    nickname: str,
+    email: str,
+    account_id: int,
+    secure: bool,
+) -> None:
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=secure,
+        max_age=COOKIE_MAX_AGE,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="user_token",
+        value=session_token,
+        httponly=True,
+        secure=secure,
+        max_age=COOKIE_MAX_AGE,
+        samesite="lax",
+    )
+    response.set_cookie(key="nickname", value=quote(nickname), secure=secure, max_age=COOKIE_MAX_AGE, samesite="lax")
+    response.set_cookie(key="email", value=quote(email), secure=secure, max_age=COOKIE_MAX_AGE, samesite="lax")
+    response.set_cookie(key="account_id", value=str(account_id), secure=secure, max_age=COOKIE_MAX_AGE, samesite="lax")
+
+
+@router.post("/personal-login")
+async def personal_login(db: Session = Depends(get_db)):
+    settings = get_settings()
+    if not settings.personal_auth_enabled:
+        raise HTTPException(status_code=403, detail="Personal login is disabled.")
+
+    email = (settings.personal_auth_email or "me@stockbrief.local").strip()
+    nickname = (settings.personal_auth_nickname or "StockBrief User").strip()
+
+    orm = (
+        db.query(AccountORM)
+        .filter(or_(AccountORM.kakao_id == PERSONAL_KAKAO_ID, AccountORM.email == email))
+        .order_by(AccountORM.id.asc())
+        .first()
+    )
+    if orm is None:
+        orm = AccountORM(email=email, kakao_id=PERSONAL_KAKAO_ID, nickname=nickname, role="ADMIN")
+        db.add(orm)
+        db.commit()
+        db.refresh(orm)
+    else:
+        changed = False
+        if orm.kakao_id != PERSONAL_KAKAO_ID:
+            orm.kakao_id = PERSONAL_KAKAO_ID
+            changed = True
+        if orm.email != email:
+            orm.email = email
+            changed = True
+        if orm.nickname != nickname:
+            orm.nickname = nickname
+            changed = True
+        if not orm.role:
+            orm.role = "ADMIN"
+            changed = True
+        if changed:
+            db.commit()
+            db.refresh(orm)
+
+    session_token = _session_store.create(account_id=int(orm.id), role=orm.role)
+    frontend_url = settings.cors_allowed_frontend_url
+    response = JSONResponse(
+        content={
+            "success": True,
+            "redirect_url": frontend_url,
+            "account_id": int(orm.id),
+            "nickname": orm.nickname,
+            "email": orm.email,
+        }
+    )
+    _set_auth_cookies(
+        response,
+        session_token=session_token,
+        nickname=orm.nickname,
+        email=orm.email,
+        account_id=int(orm.id),
+        secure=settings.cookie_secure,
+    )
+    response.delete_cookie("temp_token")
+    response.delete_cookie("kakao_nickname")
+    response.delete_cookie("kakao_email")
+    return response
+
 
 @router.post("/register")
 async def register_account(
@@ -56,10 +153,14 @@ async def register_account(
         frontend_url = _settings.cors_allowed_frontend_url
         secure = _settings.cookie_secure
         response = JSONResponse(content={"success": True, "redirect_url": frontend_url})
-        response.set_cookie(key="session_token", value=result.session_token, httponly=True, secure=secure, max_age=3600 * 24 * 7, samesite="lax")
-        response.set_cookie(key="nickname", value=quote(result.nickname), secure=secure, max_age=3600 * 24 * 7, samesite="lax")
-        response.set_cookie(key="email", value=quote(result.email), secure=secure, max_age=3600 * 24 * 7, samesite="lax")
-        response.set_cookie(key="account_id", value=str(result.account_id), secure=secure, max_age=3600 * 24 * 7, samesite="lax")
+        _set_auth_cookies(
+            response,
+            session_token=result.session_token,
+            nickname=result.nickname,
+            email=result.email,
+            account_id=result.account_id,
+            secure=secure,
+        )
         response.delete_cookie("temp_token")
         return response
 

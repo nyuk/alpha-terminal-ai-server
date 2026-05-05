@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     session_expire_minutes: int = 1440
     auth_password: str = ""
     auth_secret: str = ""
+    personal_auth_enabled: bool = True
+    personal_auth_email: str = "me@stockbrief.local"
+    personal_auth_nickname: str = "StockBrief User"
     kakao_client_id: str = ""
     kakao_client_secret: str = ""
     kakao_redirect_uri: str = ""
@@ -35,6 +38,7 @@ class Settings(BaseSettings):
     finnhub_api_key: str = ""
     data_go_kr_service_key: str = ""
     twelve_data_api_key: str = ""
+    alpha_vantage_api_key: str = ""
     # BL-BE-15: False면 히트맵 캐시는 인메모리만
     heatmap_redis_cache_enabled: bool = True
     # 파이프라인 진행/요약 상태 저장소 — True면 Redis 기반, 실패/False면 in-memory 폴백
