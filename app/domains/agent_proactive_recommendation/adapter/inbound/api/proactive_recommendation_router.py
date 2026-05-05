@@ -22,11 +22,11 @@ from app.infrastructure.database.session import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agent/proactive-recommendation", tags=["agent-proactive-recommendation"])
+router = APIRouter(prefix="/agent/proactive-briefing", tags=["agent-proactive-briefing"])
 
 
 @router.post("/run")
-async def run_proactive_recommendation(
+async def run_proactive_briefing(
     account_id: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -39,5 +39,5 @@ async def run_proactive_recommendation(
         qa=LangChainQAAdapter(api_key=settings.openai_api_key, model=settings.openai_model),
     )
     sent = usecase.execute()
-    logger.info("[ProactiveRecommendation] 수동 트리거 완료 — %d명 알림 전송", sent)
+    logger.info("[ProactiveBriefing] manual run complete; sent=%d", sent)
     return {"sent": sent}

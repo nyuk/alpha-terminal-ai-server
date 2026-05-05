@@ -49,13 +49,15 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-5-mini"
     # BL-BE-50: Responses API 전용 (chat.completions용 openai_model과 분리)
     openai_responses_model: str = "gpt-5-mini"
-    # BL-BE-51: 추천 이유 문장 전용 (기본 gpt-5-mini)
-    openai_recommendation_reason_model: str = "gpt-5-mini"
     # LangGraph 멀티 에이전트 그래프 전용 모델
     langgraph_model: str = "gpt-4.1-mini"
     youtube_api_key: str = ""
-    cors_allowed_frontend_url: str = "https://alphaterminal.duckdns.org"
-    frontend_auth_callback_url: str = "https://alphaterminal.duckdns.org/auth-callback"
+    cors_allowed_frontend_url: str = "http://localhost:3000"
+    frontend_auth_callback_url: str = "http://localhost:3000/auth-callback"
+    stock_auto_sync_enabled: bool = False
+    pipeline_scheduler_enabled: bool = False
+    profile_scheduler_enabled: bool = False
+    proactive_briefing_scheduler_enabled: bool = False
     admin_secret_code: str = ""
     debug: bool = False
     # HTTPS 환경이 아닌 경우 false로 설정 (예: HTTP 배포, 로컬 개발)
@@ -64,6 +66,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
+        "extra": "ignore",
     }
 
 

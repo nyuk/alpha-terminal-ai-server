@@ -29,16 +29,7 @@ router = APIRouter(prefix="/kakao-authentication", tags=["kakao-authentication"]
 
 _settings = get_settings()
 
-_kakao_oauth_adapter = KakaoOAuthAdapter(
-    client_id=_settings.kakao_client_id,
-    redirect_uri=_settings.kakao_redirect_uri,
-)
-_kakao_token_adapter = KakaoTokenAdapter(
-    client_id=_settings.kakao_client_id,
-    redirect_uri=_settings.kakao_redirect_uri,
-)
 _session_store = RedisSessionAdapter(redis_client)
-_kakao_login_usecase = KakaoLoginUseCase(_kakao_token_adapter, _session_store)
 _temp_token_store = RedisTempTokenAdapter(redis_client)
 _kakao_session_store = RedisAccountSessionAdapter(redis_client)
 _kakao_token_link = RedisKakaoTokenAdapter(redis_client)
@@ -47,11 +38,29 @@ _kakao_token_link = RedisKakaoTokenAdapter(redis_client)
 _OAUTH_STATE_TTL = 600  # 10분
 
 
+def _require_kakao_token_adapter() -> KakaoTokenAdapter:
+    if not _settings.kakao_client_id or not _settings.kakao_redirect_uri:
+        raise HTTPException(status_code=503, detail="Kakao OAuth is not configured")
+    return KakaoTokenAdapter(
+        client_id=_settings.kakao_client_id,
+        redirect_uri=_settings.kakao_redirect_uri,
+    )
+
+
+def _require_kakao_oauth_adapter() -> KakaoOAuthAdapter:
+    if not _settings.kakao_client_id or not _settings.kakao_redirect_uri:
+        raise HTTPException(status_code=503, detail="Kakao OAuth is not configured")
+    return KakaoOAuthAdapter(
+        client_id=_settings.kakao_client_id,
+        redirect_uri=_settings.kakao_redirect_uri,
+    )
+
+
 @router.get("/request-oauth-link")
 async def request_oauth_link():
     state = secrets.token_urlsafe(32)
     redis_client.setex(f"oauth_state:{state}", _OAUTH_STATE_TTL, "1")
-    url = _kakao_oauth_adapter.generate(state=state)
+    url = _require_kakao_oauth_adapter().generate(state=state)
     return RedirectResponse(url=url)
 
 
@@ -71,9 +80,10 @@ async def request_access_token_after_redirection(
     if not state or not redis_client.getdel(f"oauth_state:{state}"):
         raise HTTPException(status_code=400, detail="유효하지 않은 state 파라미터입니다.")
     try:
+        kakao_token_adapter = _require_kakao_token_adapter()
         usecase = CheckKakaoUserRegistrationUseCase(
-            token_port=_kakao_token_adapter,
-            user_info_port=_kakao_token_adapter,
+            token_port=kakao_token_adapter,
+            user_info_port=kakao_token_adapter,
             account_repository=AccountRepositoryImpl(db),
             temp_token_store=_temp_token_store,
             session_store=_kakao_session_store,
@@ -131,7 +141,8 @@ async def kakao_redirection(code: str = None, error: str = None, error_descripti
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code is missing")
     try:
-        return _kakao_login_usecase.execute(code)
+        usecase = KakaoLoginUseCase(_require_kakao_token_adapter(), _session_store)
+        return usecase.execute(code)
     except Exception as e:
         logger.error("[KakaoRedirection] 로그인 처리 오류", exc_info=True)
         raise HTTPException(status_code=400, detail="로그인 처리에 실패했습니다.")

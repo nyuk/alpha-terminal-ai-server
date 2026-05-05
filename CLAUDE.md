@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Alpha Desk — a Python FastAPI application.
+StockBrief is a personal stock-watchlist briefing FastAPI application.
 
 ## Commands
 

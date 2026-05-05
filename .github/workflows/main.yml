@@ -1,4 +1,4 @@
-name: Deploy alpha-terminal-ai-server via Docker
+name: Deploy stockbrief-api via Docker
 
 on:
   workflow_dispatch:
@@ -55,48 +55,48 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:latest
+          tags: ghcr.io/${{ secrets.REPO_USER }}/stockbrief-api:latest
           platforms: linux/arm64
-          cache-from: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:cache
-          cache-to: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:cache,mode=max
+          cache-from: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/stockbrief-api:cache
+          cache-to: type=registry,ref=ghcr.io/${{ secrets.REPO_USER }}/stockbrief-api:cache,mode=max
 
   deploy:
     needs: build-and-push
-    runs-on: [self-hosted, alpha-terminal-api]
+    runs-on: [self-hosted, stockbrief-api]
 
     steps:
       - name: GHCR Login
         run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Pull latest image
-        run: docker pull ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:latest
+        run: docker pull ghcr.io/${{ secrets.REPO_USER }}/stockbrief-api:latest
 
       - name: Stop old container
         run: |
-          docker stop alphadesk-api || true
-          docker rm alphadesk-api || true
+          docker stop stockbrief-api || true
+          docker rm stockbrief-api || true
           docker image prune -f
 
       - name: Run container
         run: |
           docker run -d \
-            --name alphadesk-api \
+            --name stockbrief-api \
             -p 33333:33333 \
-            --env-file /home/ec2-user/alpha-terminal-ai-server/.env \
-            --network alphadesk-network \
+            --env-file /home/ec2-user/stockbrief-api/.env \
+            --network stockbrief-network \
             --restart unless-stopped \
-            ghcr.io/${{ secrets.REPO_USER }}/alpha-terminal-api:latest
+            ghcr.io/${{ secrets.REPO_USER }}/stockbrief-api:latest
 
       - name: Health check
         run: |
           for i in {1..12}; do
             if curl -sSf http://localhost:33333/docs > /dev/null 2>&1; then
-              echo "alphadesk-api is UP"
+              echo "stockbrief-api is UP"
               exit 0
             fi
             echo "Waiting... ($i/12)"
             sleep 5
           done
           echo "Health check failed"
-          docker logs alphadesk-api --tail 200
+          docker logs stockbrief-api --tail 200
           exit 1

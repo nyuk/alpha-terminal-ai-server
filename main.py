@@ -13,8 +13,6 @@ from app.domains.news_search.adapter.inbound.api.news_search_router import route
 from app.domains.news_search.adapter.inbound.api.saved_article_router import router as saved_article_router
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
 from app.domains.news_search.infrastructure.orm.saved_article_content_orm import SavedArticleContentORM  # noqa: F401
-from app.domains.news_search.infrastructure.orm.investment_news_orm import InvestmentNewsORM  # noqa: F401
-from app.domains.news_search.infrastructure.orm.investment_news_content_orm import InvestmentNewsContentORM  # noqa: F401
 from app.domains.pipeline.adapter.inbound.api.pipeline_router import router as pipeline_router
 from app.domains.pipeline.infrastructure.orm.analysis_log_orm import AnalysisLogORM  # noqa: F401
 from app.domains.board.adapter.inbound.api.board_router import router as board_router
@@ -57,7 +55,6 @@ from app.domains.notification.infrastructure.orm.notification_orm import Notific
 from app.domains.investment.infrastructure.orm.investment_youtube_log_orm import InvestmentYouTubeLogORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_video_orm import InvestmentYouTubeVideoORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_comment_orm import InvestmentYouTubeCommentORM  # noqa: F401
-from app.domains.investment.infrastructure.orm.analysis_cache_orm import AnalysisCacheORM  # noqa: F401
 from app.infrastructure.config.settings import Settings, get_settings
 from app.infrastructure.database.session import Base, engine
 from app.infrastructure.database.pg_session import PgBase, pg_engine, check_pg_health
@@ -128,7 +125,7 @@ async def lifespan(fastapi_app: FastAPI):
         finally:
             _db.close()
 
-        if _count == 0:
+        if _count == 0 and settings.stock_auto_sync_enabled:
             _uv_logger.info("[startup] stocks 테이블이 비어있음 — DART/KRX 자동 sync 시작")
             _db = SessionLocal()
             try:
@@ -142,15 +139,26 @@ async def lifespan(fastapi_app: FastAPI):
             finally:
                 _db.close()
             _uv_logger.info(f"[startup] KRX sync 완료: {_updated}건")
+        elif _count == 0:
+            _uv_logger.info("[startup] stocks table is empty; automatic DART/KRX sync is disabled")
         else:
             _uv_logger.info(f"[startup] stocks {_count}건 확인 — sync 생략")
     except Exception:
         _uv_logger.exception("[startup] 종목 자동 sync 실패 — 수동으로 /stocks/sync 호출 필요")
 
     from app.domains.pipeline.adapter.inbound.api.pipeline_router import run_pipeline_job
-    start_scheduler(run_pipeline_job)
-    start_profile_scheduler()
-    start_proactive_recommendation_scheduler()
+    if settings.pipeline_scheduler_enabled:
+        start_scheduler(run_pipeline_job)
+    else:
+        logger.info("[Scheduler] pipeline scheduler disabled")
+    if settings.profile_scheduler_enabled:
+        start_profile_scheduler()
+    else:
+        logger.info("[ProfileScheduler] profile scheduler disabled")
+    if settings.proactive_briefing_scheduler_enabled:
+        start_proactive_recommendation_scheduler()
+    else:
+        logger.info("[ProactiveScheduler] proactive briefing scheduler disabled")
     yield
     stop_scheduler()
     stop_profile_scheduler()

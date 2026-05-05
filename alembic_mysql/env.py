@@ -17,7 +17,6 @@ from app.domains.card_share.infrastructure.orm.shared_card_orm import SharedCard
 from app.domains.investment.infrastructure.orm.investment_youtube_log_orm import InvestmentYouTubeLogORM  # noqa: F401
 from app.domains.investment.infrastructure.orm.investment_youtube_video_orm import InvestmentYouTubeVideoORM  # noqa: F401
 from app.domains.market_video.infrastructure.orm.market_video_orm import MarketVideoORM  # noqa: F401
-from app.domains.news_search.infrastructure.orm.investment_news_orm import InvestmentNewsORM  # noqa: F401
 from app.domains.news_search.infrastructure.orm.saved_article_orm import SavedArticleORM  # noqa: F401
 from app.domains.notification.infrastructure.orm.notification_orm import NotificationORM  # noqa: F401
 from app.domains.pipeline.infrastructure.orm.analysis_log_orm import AnalysisLogORM  # noqa: F401
