@@ -1,22 +1,14 @@
-import asyncio
-import json
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, HTTPException
-from fastapi.responses import StreamingResponse
 
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
-from app.domains.investment.adapter.outbound.agent import log_context
-from app.domains.investment.adapter.outbound.external.langgraph_investment_adapter import LangGraphInvestmentAdapter
 from app.domains.investment.adapter.outbound.external.youtube_sentiment_adapter import YouTubeSentimentAdapter
-from app.domains.investment.application.request.investment_decision_request import InvestmentDecisionRequest
 from app.domains.investment.application.request.youtube_sentiment_request import YouTubeSentimentRequest
-from app.domains.investment.application.response.investment_decision_response import InvestmentDecisionResponse
 from app.domains.investment.application.response.youtube_sentiment_response import (
     SentimentDistribution,
     YouTubeSentimentResponse,
 )
-from app.domains.investment.application.usecase.investment_decision_usecase import InvestmentDecisionUseCase
 from app.domains.investment.application.usecase.youtube_sentiment_usecase import YouTubeSentimentUseCase
 from app.infrastructure.cache.redis_client import redis_client
 
@@ -44,95 +36,20 @@ def _resolve_account_id(
     return None
 
 
-@router.post("/decision", response_model=InvestmentDecisionResponse)
-async def investment_decision(
-    request: InvestmentDecisionRequest,
-    account_id: Optional[str] = Cookie(default=None),
-    user_token: Optional[str] = Cookie(default=None),
-):
-    """인증된 사용자의 투자 판단 질의를 LangGraph 멀티 에이전트로 처리한다.
+_DISABLED_DECISION_DETAIL = (
+    "투자 판단 API는 개인 프로젝트 전환 과정에서 비활성화되었습니다. "
+    "관심종목 뉴스, 공시, 리포트의 사실 기반 요약과 리스크 브리핑만 제공합니다."
+)
 
-    매 호출 시 새로 워크플로우를 실행하여 최신 데이터·관점을 반영한다.
-    (2026-04-28 팀 결정: 동일 질문에 매번 다른 답을 허용하기로 함 — PG 분석 캐시 제거)
-    """
-    aid = _resolve_account_id(account_id, user_token)
-    if aid is None:
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
 
-    if not request.symbol:
-        raise HTTPException(status_code=422, detail="symbol 필드가 필요합니다.")
-
-    adapter = LangGraphInvestmentAdapter()
-    usecase = InvestmentDecisionUseCase(adapter)
-    decision = await usecase.execute(query=request.query)
-
-    return InvestmentDecisionResponse(answer=decision.answer)
+@router.post("/decision")
+async def investment_decision():
+    raise HTTPException(status_code=410, detail=_DISABLED_DECISION_DETAIL)
 
 
 @router.post("/decision/stream")
-async def investment_decision_stream(
-    request: InvestmentDecisionRequest,
-    account_id: Optional[str] = Cookie(default=None),
-    user_token: Optional[str] = Cookie(default=None),
-):
-    """인증된 사용자의 투자 판단 질의를 SSE 스트림으로 처리한다.
-
-    매 호출 시 새로 워크플로우를 실행한다 — 동일 질문에도 매번 새로운 분석을 제공.
-    (2026-04-28 팀 결정: PG 분석 캐시 제거. LangChain LLM 캐시(5분)는 유지.)
-
-    이벤트 유형:
-        {"type": "log",    "data": "로그 메시지"}
-        {"type": "result", "data": "최종 응답"}
-        {"type": "error",  "data": "오류 메시지"}
-        {"type": "end"}
-    """
-    aid = _resolve_account_id(account_id, user_token)
-    if aid is None:
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
-
-    q: asyncio.Queue = asyncio.Queue(maxsize=2000)
-
-    # 현재 컨텍스트에 큐 등록 → create_task 시 복사됨
-    token = log_context.set_log_queue(q)
-
-    async def _run_workflow():
-        try:
-            adapter = LangGraphInvestmentAdapter()
-            usecase = InvestmentDecisionUseCase(adapter)
-            decision = await usecase.execute(query=request.query)
-            await q.put({"type": "result", "data": decision.answer})
-        except Exception as e:
-            await q.put({"type": "error", "data": str(e)})
-        finally:
-            await q.put({"type": "end"})
-
-    # 백그라운드 태스크 — 현재 컨텍스트(큐 포함)를 복사하여 실행
-    asyncio.create_task(_run_workflow())
-
-    # 이 핸들러 컨텍스트에서는 큐 해제 (태스크는 복사본 보유)
-    log_context.reset_log_queue(token)
-
-    async def event_generator():
-        while True:
-            try:
-                msg = await asyncio.wait_for(q.get(), timeout=120.0)
-            except asyncio.TimeoutError:
-                yield f"data: {json.dumps({'type': 'error', 'data': '응답 타임아웃 (120s)'}, ensure_ascii=False)}\n\n"
-                break
-
-            yield f"data: {json.dumps(msg, ensure_ascii=False)}\n\n"
-
-            if msg["type"] in ("end", "error"):
-                break
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
+async def investment_decision_stream():
+    raise HTTPException(status_code=410, detail=_DISABLED_DECISION_DETAIL)
 
 
 @router.post("/youtube-sentiment", response_model=YouTubeSentimentResponse)
