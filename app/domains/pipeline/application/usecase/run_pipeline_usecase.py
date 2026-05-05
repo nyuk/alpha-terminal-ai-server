@@ -77,6 +77,15 @@ def _select_articles(articles: list, mode: ArticleMode) -> list:
     return sorted_arts[:3]
 
 
+def _choose_representative_article(raw_articles: list):
+    """Prefer a real DART filing URL when a card mixes filings and financial API data."""
+    for raw in raw_articles:
+        url = str(getattr(raw, "url", "") or "")
+        if getattr(raw, "source_type", "") == "DISCLOSURE" and "rcpNo=" in url:
+            return raw
+    return raw_articles[0]
+
+
 class RunPipelineUseCase:
     def __init__(
         self,
@@ -392,7 +401,13 @@ class RunPipelineUseCase:
             logger.warning(f"[Pipeline] {symbol} 종합 분석 실패, 단건 폴백: {e}")
             return await self._analyze_single_best(raw_articles[:1], symbol)
 
-        most_recent = raw_articles[0]
-        pub_dt = _get_published_dt(most_recent)
+        representative = _choose_representative_article(raw_articles)
+        pub_dt = _get_published_dt(representative)
         article_published_at = pub_dt if pub_dt != datetime.min else None
-        return analysis, most_recent.source_type, getattr(most_recent, "url", None), article_published_at, getattr(most_recent, "source_name", None)
+        return (
+            analysis,
+            representative.source_type,
+            getattr(representative, "url", None),
+            article_published_at,
+            getattr(representative, "source_name", None),
+        )
