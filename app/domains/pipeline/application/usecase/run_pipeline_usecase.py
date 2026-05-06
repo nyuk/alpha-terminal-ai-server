@@ -155,7 +155,15 @@ class RunPipelineUseCase:
             })
             try:
                 collect_usecase = CollectArticlesUseCase(self._raw_article_repository, self._collectors, self._stock_repository)
-                await asyncio.to_thread(collect_usecase.execute, symbol)
+                collect_result = await asyncio.to_thread(collect_usecase.execute, symbol)
+                if collect_result.total_collected == 0 and collect_result.total_skipped > 0:
+                    await _emit(on_event, {
+                        "type": "progress",
+                        "phase": "COLLECT",
+                        "symbol": symbol,
+                        "at": _now(),
+                        "message": f"[{idx}/{total}] {name}({symbol}) 최근 수집 데이터 재사용",
+                    })
             except Exception as e:
                 logger.error(f"[Pipeline] {name}({symbol}) 수집 중 오류: {e}")
                 await _emit(on_event, {
