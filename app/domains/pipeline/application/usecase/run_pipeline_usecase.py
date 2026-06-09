@@ -86,6 +86,13 @@ def _choose_representative_article(raw_articles: list):
     return raw_articles[0]
 
 
+def _has_non_empty_summary(analysis_result: tuple | None) -> bool:
+    if analysis_result is None:
+        return False
+    analysis = analysis_result[0]
+    return bool(str(getattr(analysis, "summary", "") or "").strip())
+
+
 class RunPipelineUseCase:
     def __init__(
         self,
@@ -253,6 +260,11 @@ class RunPipelineUseCase:
         logs = []
 
         for symbol, name, news_best, report_best in analysis_results:
+            if not _has_non_empty_summary(news_best):
+                news_best = None
+            if not _has_non_empty_summary(report_best):
+                report_best = None
+
             if news_best:
                 analysis, source_type, url, article_published_at, source_name = news_best
                 tags = [t.label for t in analysis.tags]

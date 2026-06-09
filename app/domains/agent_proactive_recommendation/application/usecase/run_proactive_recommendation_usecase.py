@@ -20,9 +20,9 @@ from app.domains.user_profile.adapter.outbound.persistence.user_profile_reposito
 logger = logging.getLogger(__name__)
 
 _QUESTION = (
-    "관심종목 현황을 간략히 요약해주세요. "
-    "주목할 만한 테마 변화나 리스크 요인이 있다면 알려주세요. "
-    "투자 추천은 하지 마세요."
+    "관심종목 현황을 AI_BRIEFING 형식으로 간략히 요약해주세요. "
+    "주목할 만한 테마 변화, 리스크 요인, 매수/매도/보유 추천과 확인할 조건을 알려주세요. "
+    "필요하면 명확한 판단을 제시하되 근거와 조건 중심으로 정리해주세요."
 )
 
 

@@ -14,7 +14,7 @@ from app.domains.pipeline.application.response.analysis_log_response import Anal
 from app.domains.pipeline.application.response.run_pipeline_result import RunPipelineResponse
 from app.domains.pipeline.application.response.stock_summary_response import StockSummaryResponse
 from app.domains.pipeline.application.usecase.run_pipeline_usecase import RunPipelineUseCase
-from app.domains.stock_analyzer.adapter.outbound.external.openai_analyzer_adapter import OpenAIAnalyzerAdapter
+from app.domains.stock_analyzer.adapter.outbound.external.analyzer_factory import build_article_analyzer
 from app.domains.stock_analyzer.adapter.outbound.in_memory.article_analysis_repository_impl import InMemoryArticleAnalysisRepository
 from app.domains.stock_analyzer.application.usecase.get_or_create_analysis_usecase import GetOrCreateAnalysisUseCase
 from app.domains.stock_collector.adapter.outbound.external.dart_collector_adapter import DartCollectorAdapter
@@ -54,7 +54,7 @@ def _log_to_summary(log) -> StockSummaryResponse:
 
 
 def _build_usecase(db: Session) -> RunPipelineUseCase:
-    analyzer_port = OpenAIAnalyzerAdapter(api_key=_settings.openai_api_key, model=_settings.openai_model)
+    analyzer_port = build_article_analyzer(_settings)
     return RunPipelineUseCase(
         watchlist_repository=WatchlistRepositoryImpl(db),
         raw_article_repository=RawArticleRepositoryImpl(db),

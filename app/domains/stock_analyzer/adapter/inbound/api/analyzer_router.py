@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.domains.stock_analyzer.adapter.outbound.external.openai_analyzer_adapter import OpenAIAnalyzerAdapter
+from app.domains.stock_analyzer.adapter.outbound.external.analyzer_factory import build_article_analyzer
 from app.domains.stock_analyzer.adapter.outbound.external.openai_keyword_adapter import OpenAIKeywordAdapter
 from app.domains.stock_analyzer.adapter.outbound.external.openai_risk_tag_adapter import OpenAIRiskTagAdapter
 from app.domains.stock_analyzer.adapter.outbound.external.openai_sentiment_adapter import OpenAISentimentAdapter
@@ -22,9 +22,10 @@ router = APIRouter(prefix="/analyzer", tags=["analyzer"])
 
 _settings = get_settings()
 _analysis_repository = InMemoryArticleAnalysisRepository()
+_article_analyzer = build_article_analyzer(_settings)
 
 _analyze_article_usecase = AnalyzeArticleUseCase(
-    analyzer_port=OpenAIAnalyzerAdapter(api_key=_settings.openai_api_key),
+    analyzer_port=_article_analyzer,
 )
 _extract_keywords_usecase = ExtractKeywordsUseCase(
     article_repository=normalized_article_repository,
@@ -41,7 +42,7 @@ _generate_risk_tags_usecase = GenerateRiskTagsUseCase(
 _get_or_create_analysis_usecase = GetOrCreateAnalysisUseCase(
     article_repository=normalized_article_repository,
     analysis_repository=_analysis_repository,
-    analyzer_port=OpenAIAnalyzerAdapter(api_key=_settings.openai_api_key),
+    analyzer_port=_article_analyzer,
 )
 
 

@@ -7,18 +7,18 @@ from langchain_openai import ChatOpenAI
 from app.domains.market_analysis.application.usecase.term_explainer_port import TermExplainerPort
 from app.domains.market_analysis.domain.entity.analysis_answer import AnalysisAnswer
 
-_SYSTEM_PROMPT = """당신은 주식/금융 용어를 쉽게 설명해주는 AI 어시스턴트입니다.
+_SYSTEM_PROMPT = """당신은 AI_BRIEFING 안에서 주식/금융 용어를 설명하는 보조자입니다.
 
 규칙:
-- 투자 추천·매수·매도 의견은 절대 제공하지 않습니다.
-- 중학생도 이해할 수 있는 쉬운 말로 설명합니다.
-- 설명은 3문장 이내로 작성합니다.
-- 반드시 아래 형식으로 답변합니다:
+- 매수, 매도, 보유, 관망 같은 투자 판단 용어도 설명할 수 있습니다.
+- 용어 설명은 쉽고 짧게 작성합니다.
+- 특정 종목 맥락이 있으면 그 맥락에 맞춰 설명합니다.
+- 답변은 3문장 이내로 작성합니다.
+- 반드시 아래 형식으로 답합니다.
 
 [설명 내용]
 예시: [실생활 예시 한 문장]
-
-문맥 정보가 주어진 경우 해당 문맥에 맞게 설명합니다."""
+"""
 
 _HUMAN_PROMPT = """{context_line}용어: {term}"""
 
@@ -33,7 +33,7 @@ class LangChainTermExplainerAdapter(TermExplainerPort):
         self._chain = prompt | llm | StrOutputParser()
 
     def explain(self, term: str, context: Optional[str] = None) -> AnalysisAnswer:
-        context_line = f"문맥: {context}\n" if context else ""
+        context_line = f"맥락: {context}\n" if context else ""
         try:
             answer = self._chain.invoke({"term": term, "context_line": context_line})
             return AnalysisAnswer(answer=answer, in_scope=True)

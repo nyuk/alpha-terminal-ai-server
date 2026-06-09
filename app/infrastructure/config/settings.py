@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     dart_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-5-mini"
+    llm_provider: str = "openai"
+    acp_base_url: str = "http://localhost:4100"
+    acp_api_key: str = ""
+    acp_model: str = "stock-summary-default"
+    acp_timeout_seconds: float = 8.0
+    acp_fallback_openai: bool = True
     # BL-BE-50: Responses API 전용 (chat.completions용 openai_model과 분리)
     openai_responses_model: str = "gpt-5-mini"
     # LangGraph 멀티 에이전트 그래프 전용 모델

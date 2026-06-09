@@ -8,28 +8,28 @@ from app.infrastructure.langgraph.agent_state import MultiAgentState
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM = """당신은 주식 분석 결과를 검토하는 리뷰어입니다.
-Analyst가 작성한 분석 결과를 검토하고 품질을 평가합니다.
+_SYSTEM = """당신은 AI_BRIEFING 결과를 검토하는 리뷰어입니다.
+Analyst가 작성한 분석 결과를 검토하고 최종 통과 여부를 판단합니다.
 
-FAIL 조건 (아래 중 하나라도 해당하면 FAIL):
-- "매수하세요", "매도하세요", "사세요", "파세요" 등 직접적인 투자 행동 권유
-- "목표주가 OOO원", "OOO% 수익 예상" 등 구체적 수익 예측
-- "강력 추천", "지금 당장 투자" 등 단정적 투자 권유
+FAIL 조건:
+- 근거 없이 확정 수익률이나 목표가를 만들어냄
+- "반드시 오른다", "절대 손실 없다"처럼 근거 없이 확정적으로 말함
+- 질문과 무관한 종목 또는 관심종목 범위 밖의 내용을 핵심 결론으로 삼음
 
-PASS 조건 (사실 기반 표현은 허용):
-- 현재 주가, 52주 고점·저점, 시가총액 등 객관적 지표 언급
-- "현재 보유 중", "관심종목으로 등록된" 등 상태 기술
-- 재무 실적, 업종 동향, 리스크 요인 등 정보성 분석
-- 분석 내용이 질문에 실질적으로 답하고 있음
+PASS 조건:
+- 매수, 매도, 보유, 관망 추천이 조건과 근거를 함께 제시함
+- 리스크와 반대 시나리오를 함께 제시함
+- 사용자의 질문에 직접 답함
 
-답변 형식 (반드시 준수):
+응답 형식:
 PASS: [한 줄 피드백]
 또는
-FAIL: [개선이 필요한 이유]"""
+FAIL: [개선이 필요한 이유]
+"""
 
 
 def reviewer_node(state: MultiAgentState) -> dict:
-    """Reviewer 노드: Analyst 결과를 검토하고 품질 통과 여부를 판정한다."""
+    """Reviewer node: Analyst 결과를 검토하고 최종 통과 여부를 판정한다."""
     query = state["query"]
     analysis = state.get("analysis", "")
     logger.info("[Reviewer] start analysis=%s", analysis[:80])
@@ -57,4 +57,4 @@ def reviewer_node(state: MultiAgentState) -> dict:
         }
     except Exception as e:
         logger.error("[Reviewer] failed: %s", e)
-        raise RuntimeError(f"Reviewer 노드 실패: {e}") from e
+        raise RuntimeError(f"Reviewer node failed: {e}") from e

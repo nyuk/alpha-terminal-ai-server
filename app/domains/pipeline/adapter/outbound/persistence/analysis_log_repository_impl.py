@@ -14,6 +14,8 @@ class AnalysisLogRepositoryImpl(AnalysisLogRepositoryPort):
 
     def save_all(self, logs: List[AnalysisLogResponse], account_id: Optional[int] = None) -> None:
         for log in logs:
+            if not str(log.summary or "").strip():
+                continue
             orm = AnalysisLogORM(
                 analyzed_at=log.analyzed_at,
                 symbol=log.symbol,
@@ -43,6 +45,7 @@ class AnalysisLogRepositoryImpl(AnalysisLogRepositoryPort):
             )
         else:
             query = query.filter(AnalysisLogORM.source_type.in_(source_types))
+        query = query.filter(AnalysisLogORM.summary.isnot(None), AnalysisLogORM.summary != "")
         orms = query.order_by(AnalysisLogORM.analyzed_at.desc()).all()
         seen: set = set()
         result = []

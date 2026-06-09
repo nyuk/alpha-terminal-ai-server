@@ -1,4 +1,4 @@
-"""Reviewer 노드 — 최종 결과 검토 및 투자 추천 필터링."""
+"""Reviewer 노드 — 최종 AI_BRIEFING 결과 검토."""
 import logging
 
 from langchain_core.messages import AIMessage
@@ -10,10 +10,11 @@ from app.infrastructure.langgraph.state import AgentState
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "당신은 준법 감시 리뷰어입니다. "
-    "애널리스트 분석 결과를 검토하여 투자 추천·매수·매도 권유 표현이 포함되어 있으면 제거하고, "
-    "사실 기반 정보 요약만 남깁니다. "
-    "최종 출력은 사용자에게 직접 전달될 내용이므로 명확하고 간결하게 작성하세요."
+    "당신은 AI_BRIEFING 결과를 검토하는 리뷰어입니다. "
+    "애널리스트 분석 결과가 사용자 질문과 관심종목 범위에 맞는지 확인합니다. "
+    "매수, 매도, 보유, 관망 추천은 조건과 근거, 리스크가 함께 있으면 유지합니다. "
+    "근거 없는 목표가, 보장 수익률, 확정적 미래 예측은 제거하거나 근거 기반 표현으로 고칩니다. "
+    "최종 출력은 결론, 판단 근거, 리스크, 매수/매도/보유 추천, 확인할 데이터 순서로 명확하게 작성하세요."
 )
 
 
@@ -27,7 +28,7 @@ def reviewer_node(state: AgentState) -> dict:
 
     prompt = (
         f"애널리스트 분석 결과:\n{analysis}\n\n"
-        "위 내용을 검토하여 투자 추천 표현을 제거하고 최종 출력을 작성해주세요."
+        "위 내용을 검토하여 AI_BRIEFING 최종 출력을 작성해주세요."
     )
 
     try:

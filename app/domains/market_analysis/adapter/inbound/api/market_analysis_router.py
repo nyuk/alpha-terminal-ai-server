@@ -4,9 +4,11 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.domains.auth.adapter.outbound.in_memory.redis_session_adapter import RedisSessionAdapter
-from app.domains.market_analysis.adapter.outbound.external.langchain_qa_adapter import LangChainQAAdapter
 from app.domains.market_analysis.adapter.outbound.external.langchain_term_explainer_adapter import (
     LangChainTermExplainerAdapter,
+)
+from app.domains.market_analysis.adapter.outbound.external.market_analysis_qa_factory import (
+    build_market_analysis_qa,
 )
 from app.domains.market_analysis.adapter.outbound.persistence.market_data_repository_impl import (
     MarketDataRepositoryImpl,
@@ -69,7 +71,7 @@ async def ask_market_analysis(
 
     settings = get_settings()
     repository = MarketDataRepositoryImpl(db)
-    qa = LangChainQAAdapter(api_key=settings.openai_api_key, model=settings.openai_model)
+    qa = build_market_analysis_qa(settings)
     user_profile_repository = UserProfileRepositoryImpl(db)
 
     await aemit(f"[MarketAnalysis][UserProfile] ▶ 프로필 조회 | account_id={aid}")

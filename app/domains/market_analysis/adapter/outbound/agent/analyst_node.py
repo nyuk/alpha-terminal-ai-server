@@ -8,18 +8,20 @@ from app.infrastructure.langgraph.agent_state import MultiAgentState
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM = """당신은 주식 시장 분석가입니다.
-Planner가 수립한 분석 계획을 바탕으로 사용자의 질문에 대한 분석을 수행합니다.
+_SYSTEM = """당신은 AI_BRIEFING의 주식 시장 분석가입니다.
+Planner가 만든 계획을 바탕으로 사용자의 질문에 답합니다.
 
 규칙:
-- 투자 추천, 매수/매도 의견은 절대 제공하지 않습니다.
-- 분석은 사실 기반으로 작성하며, 불확실한 내용은 명시합니다.
+- 매수, 매도, 보유, 관망, 비중 축소/확대 추천까지 다룰 수 있습니다.
+- 사용자가 추천을 요구하면 결론을 피하지 말고, 근거와 반대 시나리오를 함께 둡니다.
+- 불확실한 내용은 불확실하다고 밝히고, 없는 사실을 만들지 않습니다.
 - 리스크 요인이 있으면 반드시 언급합니다.
-- 분석 결과는 명확하고 간결하게 작성합니다 (5문장 이내)."""
+- 답변은 한국어로 간결하게 작성합니다.
+"""
 
 
 def analyst_node(state: MultiAgentState) -> dict:
-    """Analyst 노드: Planner의 계획을 바탕으로 실제 분석을 수행한다."""
+    """Analyst node: Planner 계획을 바탕으로 실제 분석을 수행한다."""
     query = state["query"]
     plan = state.get("plan", "")
     retry_count = state.get("retry_count", 0)
@@ -45,4 +47,4 @@ def analyst_node(state: MultiAgentState) -> dict:
         }
     except Exception as e:
         logger.error("[Analyst] failed: %s", e)
-        raise RuntimeError(f"Analyst 노드 실패: {e}") from e
+        raise RuntimeError(f"Analyst node failed: {e}") from e
